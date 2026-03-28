@@ -26,25 +26,26 @@ model User {
   email              String              @unique
   passwordHash       String
   onboardingResponse OnboardingResponse?
+  gameSessions       GameSession[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 }
 
 model OnboardingQuestion {
-  id          String                  @id @default(uuid())
-  key         String                  @unique
+  id          String                 @id @default(uuid())
+  key         String                 @unique
   pageNo      Int
   order       Int
   type        OnboardingQuestionType
   question    String
   description String?
   placeholder String?
-  required    Boolean                 @default(false)
+  required    Boolean                @default(false)
   options     Json?
-  isActive    Boolean                 @default(true)
+  isActive    Boolean                @default(true)
   answers     OnboardingAnswer[]
-  createdAt   DateTime                @default(now())
-  updatedAt   DateTime                @updatedAt
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
 }
 
 model OnboardingResponse {
@@ -72,4 +73,71 @@ model OnboardingAnswer {
   updatedAt    DateTime           @updatedAt
 
   @@unique([responseId, questionId])
+}
+
+model GameSession {
+  id                String             @id @default(uuid())
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status            String             @default("CREATED")
+  startedAt         DateTime           @default(now())
+  completedAt       DateTime?
+  lastQuestionIndex Int                @default(0)
+  totalQuestions    Int                @default(0)
+  generationContext Json?
+  feedback          String?
+  questions         GameQuestion[]
+  responses         GameUserResponse[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+model GameQuestion {
+  id             String               @id @default(uuid())
+  sessionId      String
+  session        GameSession          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  order          Int
+  questionText   String
+  isSolvedByUser Boolean              @default(false)
+  status         String               @default("PENDING")
+  explanation    String?
+  answers        GameQuestionAnswer[]
+  userResponse   GameUserResponse?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@unique([sessionId, order])
+  @@index([sessionId, status])
+}
+
+model GameQuestionAnswer {
+  id                String             @id @default(uuid())
+  questionId        String
+  question          GameQuestion       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answerText        String
+  selectedByAnswers GameUserResponse[] @relation("SelectedAnswer")
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([questionId])
+}
+
+model GameUserResponse {
+  id               String              @id @default(uuid())
+  sessionId        String
+  session          GameSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionId       String              @unique
+  question         GameQuestion        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedAnswerId String?
+  selectedAnswer   GameQuestionAnswer? @relation("SelectedAnswer", fields: [selectedAnswerId], references: [id], onDelete: SetNull)
+  answeredAt       DateTime?
+  responseTimeMs   Int?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([sessionId])
+  @@index([selectedAnswerId])
 }
