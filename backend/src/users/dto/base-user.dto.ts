@@ -16,6 +16,12 @@ export class BaseUserDto {
   })
   name!: string | null;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    example: "https://cdn.example.com/avatars/user-1.png"
+  })
+  avatar!: string | null;
+
   @ApiProperty({ example: "user@example.com" })
   email!: string;
 

@@ -23,6 +23,14 @@ export class UpdateMyProfileDto {
   name?: string;
 
   @ApiPropertyOptional({
+    example: "https://cdn.example.com/avatars/user-1.png"
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  avatar?: string;
+
+  @ApiPropertyOptional({
     example: "bitisha@example.com"
   })
   @IsOptional()

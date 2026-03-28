@@ -24,6 +24,7 @@ enum OnboardingResponseStatus {
 model User {
   id                 String              @id @default(uuid())
   name               String?
+  avatar             String?
   email              String              @unique
   passwordHash       String
   gender             String?
