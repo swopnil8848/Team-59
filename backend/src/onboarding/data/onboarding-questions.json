@@ -1,0 +1,87 @@
+{
+  "version": "1.0.0",
+  "title": "Mental Wellness Onboarding",
+  "description": "A simple onboarding flow to understand the user better and ask more relevant questions later.",
+  "pages": [
+    {
+      "pageNo": 1,
+      "title": "Getting to know you",
+      "description": "Initial context about stress, burnout, and mental wellbeing."
+    }
+  ],
+  "questions": [
+    {
+      "key": "display_name",
+      "pageNo": 1,
+      "order": 1,
+      "type": "TEXT",
+      "question": "What name would you like us to call you?",
+      "description": "This can be your real name or a nickname.",
+      "placeholder": "Your preferred name",
+      "required": true
+    },
+    {
+      "key": "age_range",
+      "pageNo": 1,
+      "order": 2,
+      "type": "SINGLE_SELECT",
+      "question": "Which age range fits you best?",
+      "required": true,
+      "options": [
+        { "label": "Under 18", "value": "under_18" },
+        { "label": "18-24", "value": "18_24" },
+        { "label": "25-34", "value": "25_34" },
+        { "label": "35-44", "value": "35_44" },
+        { "label": "45+", "value": "45_plus" }
+      ]
+    },
+    {
+      "key": "stress_level",
+      "pageNo": 1,
+      "order": 3,
+      "type": "SINGLE_SELECT",
+      "question": "How stressed have you felt this week?",
+      "required": true,
+      "options": [
+        { "label": "Very low", "value": "very_low" },
+        { "label": "Low", "value": "low" },
+        { "label": "Moderate", "value": "moderate" },
+        { "label": "High", "value": "high" },
+        { "label": "Very high", "value": "very_high" }
+      ]
+    },
+    {
+      "key": "burnout_signals",
+      "pageNo": 1,
+      "order": 4,
+      "type": "MULTI_SELECT",
+      "question": "Which burnout signals have you noticed recently?",
+      "description": "Select all that apply.",
+      "required": false,
+      "options": [
+        { "label": "Low energy", "value": "low_energy" },
+        { "label": "Trouble sleeping", "value": "sleep_issues" },
+        { "label": "Lack of motivation", "value": "low_motivation" },
+        { "label": "Irritability", "value": "irritability" },
+        { "label": "Difficulty focusing", "value": "focus_issues" }
+      ]
+    },
+    {
+      "key": "support_interest",
+      "pageNo": 1,
+      "order": 5,
+      "type": "BOOLEAN",
+      "question": "Would you like more guided support questions in the app?",
+      "required": true
+    },
+    {
+      "key": "personal_context",
+      "pageNo": 1,
+      "order": 6,
+      "type": "TEXTAREA",
+      "question": "Is there anything else you want us to keep in mind when asking about your wellbeing?",
+      "required": false,
+      "placeholder": "Share anything helpful about your routine, pressures, or goals."
+    }
+  ]
+}

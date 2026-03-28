@@ -1,0 +1,8 @@
+export enum OnboardingQuestionTypeEnum {
+  TEXT = "TEXT",
+  TEXTAREA = "TEXTAREA",
+  SINGLE_SELECT = "SINGLE_SELECT",
+  MULTI_SELECT = "MULTI_SELECT",
+  NUMBER = "NUMBER",
+  BOOLEAN = "BOOLEAN"
+}

@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OnboardingQuestionType {
+  TEXT
+  TEXTAREA
+  SINGLE_SELECT
+  MULTI_SELECT
+  NUMBER
+  BOOLEAN
+}
+
+enum OnboardingResponseStatus {
+  DRAFT
+  SUBMITTED
+}
+
+model User {
+  id                 String              @id @default(uuid())
+  email              String              @unique
+  passwordHash       String
+  onboardingResponse OnboardingResponse?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
+model OnboardingQuestion {
+  id          String                  @id @default(uuid())
+  key         String                  @unique
+  pageNo      Int
+  order       Int
+  type        OnboardingQuestionType
+  question    String
+  description String?
+  placeholder String?
+  required    Boolean                 @default(false)
+  options     Json?
+  isActive    Boolean                 @default(true)
+  answers     OnboardingAnswer[]
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+}
+
+model OnboardingResponse {
+  id            String                   @id @default(uuid())
+  userId        String                   @unique
+  user          User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status        OnboardingResponseStatus @default(DRAFT)
+  currentPageNo Int?
+  answers       OnboardingAnswer[]
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+}
+
+model OnboardingAnswer {
+  id           String             @id @default(uuid())
+  responseId   String
+  questionId   String
+  response     OnboardingResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question     OnboardingQuestion @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  valueText    String?
+  valueNumber  Float?
+  valueBoolean Boolean?
+  valueJson    Json?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@unique([responseId, questionId])
+}
