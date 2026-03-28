@@ -13,6 +13,7 @@ import {
   OnboardingQuestionsPayloadDto,
   OnboardingResponseDto
 } from "./dto/onboarding-response.dto";
+import { GetOnboardingQuestionsResponseDto } from "./dto/questions-response.dto";
 import { UpdateOnboardingResponseDto } from "./dto/update-onboarding-response.dto";
 import { IOnboardingRepository } from "./interfaces/onboarding-repository.interface";
 import { toOnboardingResponseDto, toQuestionsPayload } from "./onboarding.mapper";
@@ -26,7 +27,7 @@ export class OnboardingService {
     private readonly onboardingQuestionLoaderService: OnboardingQuestionLoaderService
   ) {}
 
-  async getQuestions(): Promise<OnboardingQuestionsPayloadDto> {
+  async getQuestions(): Promise<GetOnboardingQuestionsResponseDto> {
     const questionFile = this.onboardingQuestionLoaderService.getQuestionsFile();
     const questions = await this.onboardingRepository.listActiveQuestions();
 

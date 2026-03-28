@@ -4,6 +4,11 @@ import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { JwtUser } from "../common/interfaces/jwt-user.interface";
 import { createResponse } from "../common/utils/response.util";
 import { CreateOnboardingResponseDto } from "./dto/create-onboarding-response.dto";
+import {
+  GetCurrentOnboardingResponseDto,
+  GetOnboardingQuestionsResponseDto,
+  SaveOnboardingResponseDto
+} from "./dto/questions-response.dto";
 import { UpdateOnboardingResponseDto } from "./dto/update-onboarding-response.dto";
 import { OnboardingService } from "./onboarding.service";
 
@@ -13,7 +18,8 @@ export class OnboardingController {
 
   @Get("questions")
   async getQuestions() {
-    const payload = await this.onboardingService.getQuestions();
+    const payload: GetOnboardingQuestionsResponseDto =
+      await this.onboardingService.getQuestions();
     return createResponse(payload, "Onboarding questions retrieved successfully");
   }
 
@@ -21,7 +27,8 @@ export class OnboardingController {
   @Get("responses/me")
   async getMyResponse(@CurrentUser() user: JwtUser) {
     const response = await this.onboardingService.getCurrentResponse(user.sub);
-    return createResponse({ response }, "Onboarding response retrieved successfully");
+    const data: GetCurrentOnboardingResponseDto = { response };
+    return createResponse(data, "Onboarding response retrieved successfully");
   }
 
   @UseGuards(JwtAuthGuard)
@@ -31,7 +38,8 @@ export class OnboardingController {
     @Body() dto: CreateOnboardingResponseDto
   ) {
     const response = await this.onboardingService.createResponse(user.sub, dto);
-    return createResponse({ response }, "Onboarding response created successfully");
+    const data: SaveOnboardingResponseDto = { response };
+    return createResponse(data, "Onboarding response created successfully");
   }
 
   @UseGuards(JwtAuthGuard)
@@ -41,6 +49,7 @@ export class OnboardingController {
     @Body() dto: UpdateOnboardingResponseDto
   ) {
     const response = await this.onboardingService.updateResponse(user.sub, dto);
-    return createResponse({ response }, "Onboarding response updated successfully");
+    const data: SaveOnboardingResponseDto = { response };
+    return createResponse(data, "Onboarding response updated successfully");
   }
 }
