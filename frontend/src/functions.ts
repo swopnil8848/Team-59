@@ -1,8 +1,9 @@
 import { Character } from "./character";
 import { ClockPickup } from "./clockPickup";
+import { loadHiddenCharacterSpriteSheet } from "./hiddenCharacterSprites";
 import { Lantern } from "./lantern";
 import { Maps } from "./maps";
-import { NPC } from "./npc";
+import { NPC, NpcDialogue } from "./npc";
 import { Ui } from "./ui";
 import { GameState, stateVariables, DirectionalSprites } from "./stateVariables";
 
@@ -64,6 +65,80 @@ export function drawEllipse(
   ctx.fill();
 }
 
+function shuffleArray<T>(items: T[]) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const randomIndex = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[randomIndex]] = [copy[randomIndex], copy[i]];
+  }
+  return copy;
+}
+
+function createRandomHiddenCharacters(centerX: number, centerY: number) {
+  const spawnOffsets = [
+    { x: 260, y: -200 },
+    { x: -340, y: -260 },
+    { x: 560, y: -120 },
+    { x: 860, y: 160 },
+    { x: 220, y: 520 },
+    { x: -420, y: 560 },
+    { x: -840, y: 180 },
+    { x: -700, y: -540 },
+  ];
+
+  const dialoguePool: NpcDialogue[] = [
+    {
+      name: "Aama Maya",
+      scenario: "I am feeling confused. I thought my daughter was supposed to come this morning. What should I do now?",
+      options: [
+        "Sit with me and gently remind me what day it is.",
+        "Tell me I am wrong and should stop worrying.",
+        "Leave me alone so I can figure it out myself.",
+      ],
+    },
+    {
+      name: "Baa Hari",
+      scenario: "I cannot remember where I kept my shawl, and it is making me anxious.",
+      options: [
+        "Help me look slowly and reassure me.",
+        "Laugh and say it is probably gone forever.",
+        "Tell me to search faster because time is being wasted.",
+      ],
+    },
+    {
+      name: "Uncle Raman",
+      scenario: "I think I need to go home, even though I am already here. Can you help me?",
+      options: [
+        "Speak calmly and help me feel safe in the present moment.",
+        "Block the door and argue with me.",
+        "Ignore me until I stop talking.",
+      ],
+    },
+    {
+      name: "Auntie Sita",
+      scenario: "Too many things are happening around me. I feel overwhelmed.",
+      options: [
+        "Reduce the noise and talk to me softly.",
+        "Ask many questions quickly.",
+        "Tell me to just get used to it.",
+      ],
+    },
+  ];
+
+  const chosenSprites = shuffleArray(stateVariables.npcPortraits).slice(0, 4);
+  const chosenOffsets = shuffleArray(spawnOffsets).slice(0, chosenSprites.length);
+
+  return chosenSprites.map(
+    (sprite, index) =>
+      new NPC(
+        centerX + chosenOffsets[index].x,
+        centerY + chosenOffsets[index].y,
+        sprite,
+        dialoguePool[index % dialoguePool.length]
+      )
+  );
+}
+
 function loadPlayerSprites(): DirectionalSprites {
   const basePath = "assets/character/images/characters/Ophelia";
   return {
@@ -71,16 +146,6 @@ function loadPlayerSprites(): DirectionalSprites {
     back: loadCharacterImages("back", 4, basePath),
     left: loadCharacterImages("left", 4, basePath),
     right: loadCharacterImages("right", 4, basePath),
-  };
-}
-
-function loadNpcSprites(): DirectionalSprites {
-  const basePath = "assets/enemy/goblin";
-  return {
-    front: loadGoblinImages("front", 6, basePath),
-    back: loadGoblinImages("back", 6, basePath),
-    left: loadGoblinImages("left", 6, basePath),
-    right: loadGoblinImages("right", 6, basePath),
   };
 }
 
@@ -96,15 +161,9 @@ export function initializeGame() {
   stateVariables.lantern = new Lantern();
   stateVariables.ui = new Ui();
 
-  stateVariables.npcSprites = loadNpcSprites();
-
   const centerX = stateVariables.windowWidth / 2;
   const centerY = stateVariables.windowHeight / 2;
-  stateVariables.npcs = [
-    new NPC(centerX + 200, centerY - 100, "d"),
-    new NPC(centerX - 300, centerY + 150, "l"),
-    new NPC(centerX + 500, centerY + 300, "r"),
-  ];
+  stateVariables.npcs = [];
 
   stateVariables.clockImage = new Image();
   stateVariables.clockImage.src =
@@ -116,6 +175,11 @@ export function initializeGame() {
     new ClockPickup(centerX - 400, centerY - 200),
     new ClockPickup(centerX + 600, centerY - 350),
   ];
+
+  loadHiddenCharacterSpriteSheet((sprites) => {
+    stateVariables.npcPortraits = sprites;
+    stateVariables.npcs = createRandomHiddenCharacters(centerX, centerY);
+  });
 
   stateVariables.endTimeMs = Date.now() + 120000;
   stateVariables.gameState = GameState.running;

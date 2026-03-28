@@ -1,32 +1,47 @@
 import { Point } from "./shapes/point";
 import { stateVariables } from "./stateVariables";
+import { distance } from "./utils/util";
+
+export type NpcDialogue = {
+  name: string;
+  scenario: string;
+  options: string[];
+};
 
 export class NPC {
   startPoint: Point;
-  direction: "u" | "d" | "l" | "r";
+  sprite: HTMLCanvasElement;
+  dialogue: NpcDialogue;
   w: number;
   h: number;
-  spritePos: number;
+  interactionRadius: number;
 
-  constructor(x: number, y: number, direction: "u" | "d" | "l" | "r" = "d") {
+  constructor(x: number, y: number, sprite: HTMLCanvasElement, dialogue: NpcDialogue) {
     this.startPoint = new Point(x, y);
-    this.direction = direction;
-    this.w = 70;
-    this.h = 70;
-    this.spritePos = 0;
+    this.sprite = sprite;
+    this.dialogue = dialogue;
+    this.w = 58;
+    this.h = 82;
+    this.interactionRadius = 92;
   }
 
   show(ctx: CanvasRenderingContext2D = stateVariables.ctx) {
-    const sprites = stateVariables.npcSprites;
-    const staggerFrame = 8;
-    const frame = Math.floor(this.spritePos / staggerFrame) % sprites.front.length;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this.sprite, this.startPoint.x, this.startPoint.y, this.w, this.h);
+    ctx.restore();
+  }
 
-    let img = sprites.front[frame];
-    if (this.direction === "u") img = sprites.back[frame];
-    if (this.direction === "l") img = sprites.left[frame];
-    if (this.direction === "r") img = sprites.right[frame];
+  isPlayerNearby() {
+    const npcCenter = new Point(
+      this.startPoint.x + this.w / 2,
+      this.startPoint.y + this.h / 2
+    );
+    const playerCenter = new Point(
+      stateVariables.player.startPoint.x + 28,
+      stateVariables.player.startPoint.y + 40
+    );
 
-    ctx.drawImage(img, this.startPoint.x, this.startPoint.y, this.w, this.h);
-    this.spritePos++;
+    return distance(npcCenter, playerCenter) <= this.interactionRadius;
   }
 }
