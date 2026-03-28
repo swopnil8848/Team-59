@@ -4,7 +4,8 @@ const requiredKeys = [
   "DATABASE_URL",
   "JWT_SECRET",
   "JWT_EXPIRES_IN",
-  "FRONTEND_ORIGIN"
+  "FRONTEND_ORIGIN",
+  "AI_BACKEND_URL"
 ] as const;
 
 export function validateEnv(config: EnvConfig): EnvConfig {

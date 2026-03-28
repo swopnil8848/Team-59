@@ -13,6 +13,15 @@ export class GameAnswerOptionDto {
     example: "Take a short break, reflect calmly, and later ask for constructive feedback."
   })
   answerText!: string;
+
+  @ApiProperty({ example: true })
+  isCorrect!: boolean;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: "Thank you, that helps me."
+  })
+  feedback!: string | null;
 }
 
 export class SelectedGameAnswerDto extends GameAnswerOptionDto {

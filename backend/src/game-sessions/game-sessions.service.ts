@@ -1,8 +1,11 @@
 import {
   BadRequestException,
+  BadGatewayException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { Prisma, GameQuestion, GameQuestionAnswer, GameSession } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnswerGameQuestionDto } from "./dto/answer-game-question.dto";
@@ -30,9 +33,24 @@ type GameSessionWithQuestions = GameSession & {
   questions: GameQuestionWithAnswers[];
 };
 
+type GeneratedQuestionPayload = {
+  order: number;
+  outsider: boolean;
+  questionText: string;
+  explanation: string | null;
+  answers: Array<{
+    text: string;
+    correct: boolean;
+    feedback: string | null;
+  }>;
+};
+
 @Injectable()
 export class GameSessionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService
+  ) {}
 
   async createSession(userId: string): Promise<CreateGameSessionResponseDto> {
     const user = (await this.prisma.user.findUnique({
@@ -61,31 +79,29 @@ export class GameSessionsService {
       );
     }
 
-    const questionCount = 10;
-
     const generationContext = this.buildGenerationContext({
       gender: resolvedUserProfile.gender,
       age: resolvedUserProfile.age,
       environment: resolvedUserProfile.environment
     });
 
-    const session = await this.prisma.gameSession.create({
-      data: {
-        userId,
-        status: GameSessionStatusEnum.CREATED,
-        generationContext
-      }
+    const generatedQuestionSet = await this.generateQuestionsFromApi({
+      gender: resolvedUserProfile.gender,
+      age: resolvedUserProfile.age,
+      environment: resolvedUserProfile.environment
     });
 
-    const generatedQuestions = this.generateQuestions(generationContext, questionCount);
-
-    const savedSession = await this.prisma.gameSession.update({
-      where: { id: session.id },
+    const savedSession = await this.prisma.gameSession.create({
       data: {
+        userId,
         status: GameSessionStatusEnum.IN_PROGRESS,
-        totalQuestions: generatedQuestions.length,
+        generationContext: {
+          ...(generationContext as Record<string, string | number>),
+          questionSetId: generatedQuestionSet.questionSetId
+        } satisfies Prisma.InputJsonValue,
+        totalQuestions: generatedQuestionSet.questions.length,
         questions: {
-          create: generatedQuestions.map((question) => ({
+          create: generatedQuestionSet.questions.map((question) => ({
             order: question.order,
             outsider: question.outsider,
             questionText: question.questionText,
@@ -301,136 +317,131 @@ export class GameSessionsService {
     } satisfies Prisma.InputJsonValue;
   }
 
-  private generateQuestions(context: Prisma.InputJsonValue, questionCount: number) {
-    const payload = context as {
-      gender?: string;
-      age?: number;
-      environment?: string;
+  private async generateQuestionsFromApi(input: {
+    gender: string;
+    age: number;
+    environment: string;
+  }): Promise<{
+    questionSetId: string | null;
+    questions: GeneratedQuestionPayload[];
+  }> {
+    const baseUrl = this.configService.get<string>("integrations.aiBackendUrl");
+
+    if (!baseUrl) {
+      throw new InternalServerErrorException(
+        "AI_BACKEND_URL is not configured for game session generation"
+      );
+    }
+
+    let response: Response;
+
+    try {
+      response = await fetch(`${baseUrl.replace(/\/$/, "")}/npc-questions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(input)
+      });
+    } catch {
+      throw new BadGatewayException("Could not reach the NPC question generation service");
+    }
+
+    if (!response.ok) {
+      throw new BadGatewayException(
+        `NPC question generation failed with status ${response.status}`
+      );
+    }
+
+    let payload: unknown;
+
+    try {
+      payload = await response.json();
+    } catch {
+      throw new BadGatewayException("NPC question generation returned invalid JSON");
+    }
+
+    return this.normalizeGeneratedQuestions(payload);
+  }
+
+  private normalizeGeneratedQuestions(payload: unknown): {
+    questionSetId: string | null;
+    questions: GeneratedQuestionPayload[];
+  } {
+    if (!payload || typeof payload !== "object" || !("questions" in payload)) {
+      throw new BadGatewayException("NPC question generation returned an invalid payload");
+    }
+
+    const parsedPayload = payload as {
+      questionSetId?: unknown;
+      questions: unknown;
     };
+    const questionSetId =
+      typeof parsedPayload.questionSetId === "string" ? parsedPayload.questionSetId : null;
+    const rawQuestions = parsedPayload.questions;
 
-    const environmentLabel = payload.environment ?? "daily life";
-    const ageLabel = typeof payload.age === "number" ? `${payload.age}-year-old` : "person";
-    const genderLabel = payload.gender ?? "person";
+    if (!Array.isArray(rawQuestions) || rawQuestions.length === 0) {
+      throw new BadGatewayException("NPC question generation returned no questions");
+    }
 
-    const baseQuestions = [
-      {
-        order: 1,
-        outsider: true,
-        questionText: `As a ${ageLabel} navigating a ${environmentLabel} setting, when you start feeling overwhelmed, what kind of support would feel most helpful right now?`,
-        explanation: "This explores what kind of coping support feels realistic in the moment.",
-        answers: [
-          {
-            text: "Pause for a few minutes, breathe, and check in with how I feel.",
-            correct: true,
-            feedback: "That sounds like a grounded and compassionate first step."
-          },
-          {
-            text: "Keep pushing and ignore how I feel until the day ends.",
-            correct: false,
-            feedback: "That may increase stress if your needs keep getting ignored."
-          },
-          {
-            text: "Avoid everyone and bottle everything up.",
-            correct: false,
-            feedback: "Withdrawing completely can make overwhelm feel heavier."
-          },
-          {
-            text: "Assume the stress will disappear if I do nothing.",
-            correct: false,
-            feedback: "Doing nothing might leave the stress cycle unchanged."
-          }
-        ]
-      },
-      {
-        order: 2,
-        outsider: true,
-        questionText:
-          `A ${genderLabel} user reports feeling mentally drained for several days. Which response sounds closest to what they would realistically choose next?`,
-        explanation: "This helps identify your current response pattern when energy is low.",
-        answers: [
-          {
-            text: "Talk to someone I trust or ask for support.",
-            correct: true,
-            feedback: "Reaching out can reduce isolation and make the load feel lighter."
-          },
-          {
-            text: "Take one small step and give myself permission not to solve everything today.",
-            correct: true,
-            feedback: "A small manageable action can be a healthy way to rebuild momentum."
-          },
-          {
-            text: "Pretend everything is fine and continue as usual.",
-            correct: false,
-            feedback: "Ignoring how drained you feel can make it harder to recover."
-          },
-          {
-            text: "Withdraw completely without telling anyone how I am doing.",
-            correct: false,
-            feedback: "Total withdrawal can make support harder to access."
-          }
-        ]
-      },
-      {
-        order: 3,
-        outsider: true,
-        questionText:
-          `In a ${environmentLabel} environment, when a difficult situation keeps replaying in your mind, what support would help most?`,
-        explanation: "This question surfaces whether the user leans toward reflection, support, or avoidance.",
-        answers: [
-          {
-            text: "Space to slow down and process my thoughts calmly.",
-            correct: true,
-            feedback: "Creating space to process can help reduce mental looping."
-          },
-          {
-            text: "A trusted person who can listen without judging me.",
-            correct: true,
-            feedback: "Supportive connection can be very regulating in hard moments."
-          },
-          {
-            text: "A practical step-by-step way to regain control.",
-            correct: true,
-            feedback: "Structure can help when your thoughts feel repetitive or stuck."
-          },
-          {
-            text: "A distraction so I do not have to think about it at all.",
-            correct: false,
-            feedback: "Distraction may help briefly, but it may not resolve the underlying stress."
-          }
-        ]
-      },
-      {
-        order: 4,
-        outsider: true,
-        questionText:
-          "You are worried about an upcoming responsibility and keep postponing it. What approach feels most manageable for you right now?",
-        explanation: "This helps gauge coping style around anxiety and avoidance.",
-        answers: [
-          {
-            text: "Break it into one tiny step and start there.",
-            correct: true,
-            feedback: "A very small first step often makes anxious tasks feel more doable."
-          },
-          {
-            text: "Wait until the pressure becomes unavoidable.",
-            correct: false,
-            feedback: "Waiting may increase stress and make the task feel even heavier."
-          },
-          {
-            text: "Judge myself harshly for falling behind.",
-            correct: false,
-            feedback: "Harsh self-criticism usually makes motivation and confidence worse."
-          },
-          {
-            text: "Distract myself and hope the stress passes.",
-            correct: false,
-            feedback: "Avoidance can give short relief but often keeps the stress active."
-          }
-        ]
+    const questions = rawQuestions.map((question, index) => {
+      if (!question || typeof question !== "object") {
+        throw new BadGatewayException("NPC question generation returned a malformed question");
       }
-    ];
 
-    return baseQuestions.slice(0, questionCount);
+      const questionText = question.question;
+      const outsider = question.outsider;
+      const rawAnswers = question.answers;
+
+      if (typeof questionText !== "string" || questionText.trim().length === 0) {
+        throw new BadGatewayException("NPC question generation returned a question without text");
+      }
+
+      if (typeof outsider !== "boolean") {
+        throw new BadGatewayException(
+          "NPC question generation returned a question without outsider state"
+        );
+      }
+
+      if (!Array.isArray(rawAnswers) || rawAnswers.length === 0) {
+        throw new BadGatewayException("NPC question generation returned a question without answers");
+      }
+
+      const answers = rawAnswers.map((answer) => {
+        if (!answer || typeof answer !== "object") {
+          throw new BadGatewayException("NPC question generation returned a malformed answer");
+        }
+
+        if (typeof answer.text !== "string" || answer.text.trim().length === 0) {
+          throw new BadGatewayException("NPC question generation returned an answer without text");
+        }
+
+        if (typeof answer.correct !== "boolean") {
+          throw new BadGatewayException(
+            "NPC question generation returned an answer without correctness"
+          );
+        }
+
+        return {
+          text: answer.text.trim(),
+          correct: answer.correct,
+          feedback: typeof answer.feedback === "string" ? answer.feedback.trim() : null
+        };
+      });
+
+      return {
+        order: index + 1,
+        outsider,
+        questionText: questionText.trim(),
+        explanation: null,
+        answers
+      };
+    });
+
+    return {
+      questionSetId,
+      questions
+    };
   }
 
   private toGameSessionSummaryDto(session: GameSession): GameSessionSummaryDto {
@@ -455,7 +466,9 @@ export class GameSessionsService {
       explanation: question.explanation,
       answers: question.answers.map((answer) => ({
         id: answer.id,
-        answerText: answer.answerText
+        answerText: answer.answerText,
+        isCorrect: answer.isCorrect,
+        feedback: answer.feedback ?? null
       }))
     };
   }

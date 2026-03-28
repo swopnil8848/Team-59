@@ -8,5 +8,8 @@ export default () => ({
   auth: {
     jwtSecret: process.env.JWT_SECRET ?? "dev-secret-change-me",
     jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "7d"
+  },
+  integrations: {
+    aiBackendUrl: process.env.AI_BACKEND_URL ?? "http://13.220.64.204"
   }
 });
