@@ -71,45 +71,47 @@ export class Ui {
     ctx.restore();
   }
 
-  private drawHudPill(
-    text: string,
-    centerX: number,
+  private drawThematicText(
+    label: string,
+    val: string,
+    x: number,
     y: number,
+    align: CanvasTextAlign,
     ctx: CanvasRenderingContext2D = stateVariables.ctx
   ) {
     ctx.save();
-    ctx.font = "600 16px Outfit";
-    ctx.textAlign = "center";
-    const paddingX = 14;
-    const paddingY = 6;
-    const textWidth = ctx.measureText(text).width;
-    const w = textWidth + paddingX * 2;
-    const h = 26;
-    const r = h / 2;
-    const x = centerX - w / 2;
+    ctx.textAlign = align;
+    ctx.textBaseline = "top";
 
-    ctx.fillStyle = "rgba(14, 18, 24, 0.75)";
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.arc(x + w - r, y + r, r, -Math.PI / 2, Math.PI / 2);
-    ctx.lineTo(x + r, y + h);
-    ctx.arc(x + r, y + r, r, Math.PI / 2, (Math.PI * 3) / 2);
-    ctx.closePath();
-    ctx.fill();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 3;
 
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    ctx.font = '10px "Press Start 2P", monospace';
+    ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+    ctx.fillText(label, x, y);
 
-    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-    ctx.fillText(text, centerX, y + h - paddingY);
+    ctx.font = '16px "Press Start 2P", monospace';
+
+    const grad = ctx.createLinearGradient(0, y, 0, y + 26);
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(1, "#cce6ff");
+    ctx.fillStyle = grad;
+
+    if (align === "right") {
+      ctx.fillText(val, x, y + 16);
+    } else if (align === "center") {
+      ctx.fillText(val, x, y + 16);
+    } else {
+      ctx.fillText(val, x, y + 16);
+    }
+
     ctx.restore();
   }
 
   renderScore(ctx: CanvasRenderingContext2D = stateVariables.ctx) {
-    const xPos = stateVariables.windowWidth - 90;
-    this.drawHudPill(`Score ${stateVariables.player.score}`, xPos, 12, ctx);
+    const xPos = stateVariables.windowWidth - 32;
+    this.drawThematicText("SCORE", stateVariables.player.score.toString(), xPos, 16, "right", ctx);
   }
 
   renderStamina(ctx: CanvasRenderingContext2D = stateVariables.ctx) {
@@ -228,7 +230,10 @@ export class Ui {
 
   renderTimer(secondsLeft: number, ctx: CanvasRenderingContext2D = stateVariables.ctx) {
     const centerX = stateVariables.windowWidth / 2;
-    this.drawHudPill(`Time ${secondsLeft}s`, centerX, 12, ctx);
+    const m = Math.floor(secondsLeft / 60);
+    const s = secondsLeft % 60;
+    const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
+    this.drawThematicText("TIME", timeStr, centerX, 16, "center", ctx);
   }
 
   renderNpcHint(ctx: CanvasRenderingContext2D = stateVariables.ctx) {
@@ -564,6 +569,7 @@ export class Ui {
             optionText: chosenText,
             timeMs: now,
           });
+          stateVariables.player.score += 1;
 
           stateVariables.dialogueSelectedOptionIndex = clickedIndex;
           stateVariables.dialogueSelectionStartedMs = now;

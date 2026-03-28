@@ -22,6 +22,7 @@ export class Character {
   score: number;
   stamina: number;
   staminaMax: number;
+  isExhausted: boolean;
 
   constructor() {
     this.startPoint = new Point(0, 0);
@@ -42,6 +43,7 @@ export class Character {
     this.score = 0;
     this.staminaMax = 100;
     this.stamina = this.staminaMax;
+    this.isExhausted = false;
   }
 
   setSprites(sprites: DirectionalSprites) {

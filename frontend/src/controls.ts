@@ -138,9 +138,16 @@ export function handleOtherControls() {
     !!stateVariables.keyState[83] ||
     !!stateVariables.keyState[68];
   const isMoving = isMovingKey || stateVariables.isClickMoving;
+  if (stateVariables.player.stamina <= 0) {
+    stateVariables.player.isExhausted = true;
+  } else if (stateVariables.player.stamina >= 20) { // recover some stamina before allowing sprint again
+    stateVariables.player.isExhausted = false;
+  }
+
   const canSprint =
     !!stateVariables.keyState[16] &&
     !stateVariables.isHoldingMeditationKey &&
+    !stateVariables.player.isExhausted &&
     stateVariables.player.stamina > 0;
 
   if (canSprint && isMoving) {
