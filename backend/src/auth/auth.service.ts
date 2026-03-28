@@ -73,6 +73,9 @@ export class AuthService {
         id: userId,
         email,
         passwordHash: "",
+        gender: null,
+        age: null,
+        environment: null,
         createdAt,
         updatedAt: createdAt
       }),

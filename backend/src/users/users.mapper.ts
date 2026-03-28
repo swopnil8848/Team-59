@@ -6,6 +6,9 @@ export function toBaseUserDto(user: UserRecord): BaseUserDto {
   return {
     id: user.id,
     email: user.email,
+    gender: user.gender,
+    age: user.age,
+    environment: user.environment,
     createdAt: user.createdAt
   };
 }

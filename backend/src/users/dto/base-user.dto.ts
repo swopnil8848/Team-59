@@ -1,4 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { UserEnvironmentEnum } from "../enums/user-environment.enum";
+import { UserGenderEnum } from "../enums/user-gender.enum";
 
 export class BaseUserDto {
   @ApiProperty({
@@ -9,6 +12,26 @@ export class BaseUserDto {
 
   @ApiProperty({ example: "user@example.com" })
   email!: string;
+
+  @ApiPropertyOptional({
+    enum: UserGenderEnum,
+    nullable: true,
+    example: UserGenderEnum.FEMALE
+  })
+  gender!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 25
+  })
+  age!: number | null;
+
+  @ApiPropertyOptional({
+    enum: UserEnvironmentEnum,
+    nullable: true,
+    example: UserEnvironmentEnum.OFFICE
+  })
+  environment!: string | null;
 
   @ApiProperty({
     type: String,

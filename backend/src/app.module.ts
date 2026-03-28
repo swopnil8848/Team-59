@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { AuthModule } from "./auth/auth.module";
 import appConfig from "./config/app.config";
 import { validateEnv } from "./config/env.validation";
+import { GameSessionsModule } from "./game-sessions/game-sessions.module";
 import { OnboardingModule } from "./onboarding/onboarding.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { UsersModule } from "./users/users.module";
@@ -17,7 +18,8 @@ import { UsersModule } from "./users/users.module";
     PrismaModule,
     UsersModule,
     AuthModule,
-    OnboardingModule
+    OnboardingModule,
+    GameSessionsModule
   ]
 })
 export class AppModule {}
