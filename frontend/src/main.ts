@@ -1,21 +1,55 @@
-import { stateVariables } from './stateVariables';
-import './style.css';
-import './controls';
-import { preload } from './functions';
+import "./style.css";
+import "./controls";
+import { adjustCanvasSize, initializeGame } from "./functions";
+import { handleMovementControls, handleOtherControls } from "./controls";
+import { GameState, stateVariables } from "./stateVariables";
 
-const canvas = document.querySelector("#gameCanvas") as HTMLCanvasElement;
-const ctx = canvas.getContext("2d")!;
+export const canvas = document.querySelector(
+  "#gameCanvas"
+) as HTMLCanvasElement;
+stateVariables.ctx = canvas.getContext("2d")!;
 
-canvas.width = stateVariables.windowWidth;
-canvas.height = stateVariables.windowHeight;
+initializeGame();
 
-preload();
+function draw() {
+  adjustCanvasSize();
 
-function draw(){
-    stateVariables.bgImage.show(ctx);
-    stateVariables.player.show(ctx);
+  stateVariables.bgImage.show();
 
+  stateVariables.npcs.forEach((npc) => npc.show());
+  stateVariables.clockPickups.forEach((clock) => clock.show());
 
-    requestAnimationFrame(draw);
+  stateVariables.player.show();
+  stateVariables.bgImage.showDepth();
+  stateVariables.lantern.showLuminosity();
+  stateVariables.lantern.changeLuminosity();
+
+  handleOtherControls();
+  handleMovementControls();
+
+  stateVariables.clockPickups = stateVariables.clockPickups.filter((clock) => {
+    if (clock.isCollected()) {
+      stateVariables.endTimeMs += 5000;
+      return false;
+    }
+    return true;
+  });
+
+  const remainingMs = stateVariables.endTimeMs - Date.now();
+  const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+
+  stateVariables.ui.renderTimer(remainingSeconds);
+  stateVariables.ui.renderScore();
+
+  if (remainingMs <= 0) {
+    stateVariables.gameState = GameState.finished;
+  }
+
+  if (stateVariables.gameState === GameState.finished) {
+    stateVariables.ui.renderGameOver();
+  }
+
+  requestAnimationFrame(draw);
 }
-requestAnimationFrame(draw);
+
+draw();
