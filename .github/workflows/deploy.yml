@@ -1,0 +1,73 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
+env:
+  PROJECT_PATH: /home/ubuntu/Team-59
+  FRONTEND_DIST_PATH: /var/www/mindtrail
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Verify deploy path exists
+        run: |
+          if [ ! -d "${PROJECT_PATH}/.git" ]; then
+            echo "Expected git repo at ${PROJECT_PATH}"
+            exit 1
+          fi
+
+      - name: Pull latest code
+        run: |
+          cd "${PROJECT_PATH}"
+          git pull origin main
+
+      - name: Deploy backend
+        run: |
+          cd "${PROJECT_PATH}/backend"
+          npm install
+          npx prisma generate
+          npx prisma migrate deploy
+          npm run seed
+          npm run build
+          pm2 restart mindtrail-backend || pm2 start dist/src/main.js --name mindtrail-backend
+          pm2 save
+
+      - name: Deploy AI backend
+        run: |
+          cd "${PROJECT_PATH}/ai-backend"
+          if [ ! -d "venv" ]; then
+            python3 -m venv venv
+          fi
+          . venv/bin/activate
+          pip install -r requirements.txt
+          pm2 restart mindtrail-ai || pm2 start "venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000" --name mindtrail-ai
+          pm2 save
+
+      - name: Deploy frontend
+        run: |
+          cd "${PROJECT_PATH}/frontend"
+          npm install
+          npm run build
+          sudo mkdir -p "${FRONTEND_DIST_PATH}"
+          sudo rm -rf "${FRONTEND_DIST_PATH}"/*
+          sudo cp -r dist/. "${FRONTEND_DIST_PATH}/"
+
+      - name: Reload nginx
+        run: |
+          sudo nginx -t
+          sudo systemctl restart nginx
+
+      - name: Show service status
+        run: |
+          pm2 status
+          sudo systemctl status nginx --no-pager
