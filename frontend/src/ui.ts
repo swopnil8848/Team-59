@@ -412,6 +412,14 @@ export class Ui {
         });
 
         if (clickedIndex !== -1) {
+          const chosenText = npc.dialogue.options[clickedIndex] ?? "";
+          stateVariables.interactions.push({
+            npcName: npc.dialogue.name,
+            optionIndex: clickedIndex,
+            optionText: chosenText,
+            timeMs: now,
+          });
+
           stateVariables.dialogueSelectedOptionIndex = clickedIndex;
           stateVariables.dialogueSelectionStartedMs = now;
           stateVariables.dialogueSelectionNpcIndex = shownNpcIndex;

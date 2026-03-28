@@ -9,6 +9,7 @@ import {
 } from "./functions";
 import { handleMovementControls, handleOtherControls } from "./controls";
 import { GameState, stateVariables } from "./stateVariables";
+import { showGameOverOverlay } from "./gameOverOverlay";
 
 type AvatarOption = {
   id: string;
@@ -553,18 +554,49 @@ function renderLogin() {
   });
 }
 
-let gameStarted = false;
 function startGame() {
-  if (gameStarted) return;
-  gameStarted = true;
   stopAvatarAnimation();
   appRoot.style.display = "none";
   canvas.style.display = "block";
+  stateVariables.interactions = [];
+  stateVariables.gamePaused = false;
+  stateVariables.gameOverShown = false;
+  stateVariables.gameState = GameState.running;
   initializeGame();
   requestAnimationFrame(draw);
 }
 
+function openGameOverOverlay() {
+  stateVariables.gamePaused = true;
+  stateVariables.gameOverShown = true;
+
+  const score = stateVariables.player?.score ?? 0;
+  showGameOverOverlay({
+    appRoot,
+    canvas,
+    score,
+    interactions: stateVariables.interactions,
+    avatarId: stateVariables.selectedAvatarId,
+    onReplay: () => {
+      stateVariables.interactions = [];
+      stateVariables.gamePaused = false;
+      stateVariables.gameOverShown = false;
+      stateVariables.gameState = GameState.running;
+      initializeGame();
+      requestAnimationFrame(draw);
+    },
+    onDashboard: () => {
+      stateVariables.gamePaused = true;
+      slideTo(renderHub);
+    },
+  });
+}
+
 function draw() {
+  if (stateVariables.gamePaused) {
+    return;
+  }
+
   adjustCanvasSize();
   stateVariables.ctx.imageSmoothingEnabled = false;
 
@@ -619,7 +651,10 @@ function draw() {
   }
 
   if (stateVariables.gameState === GameState.finished) {
-    stateVariables.ui.renderGameOver();
+    if (!stateVariables.gameOverShown) {
+      openGameOverOverlay();
+    }
+    return;
   }
 
   requestAnimationFrame(draw);

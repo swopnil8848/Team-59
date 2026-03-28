@@ -185,6 +185,7 @@ export function initializeGame() {
     stateVariables.npcs = createRandomHiddenCharacters(centerX, centerY);
   });
 
+  // Timer set to 120s
   stateVariables.endTimeMs = Date.now() + 120000;
   stateVariables.gameState = GameState.running;
 }

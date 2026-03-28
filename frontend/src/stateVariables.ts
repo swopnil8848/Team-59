@@ -17,6 +17,13 @@ export enum GameState {
   finished = "finished",
 }
 
+export type NpcInteraction = {
+  npcName: string;
+  optionIndex: number;
+  optionText: string;
+  timeMs: number;
+};
+
 export const keyDown = {
   E: false,
 };
@@ -91,6 +98,9 @@ export const stateVariables = {
   meditationStart: null as number | null,
   selectedAvatarId: "Ophelia",
   soundEnabled: true,
+  gamePaused: false,
+  gameOverShown: false,
+  interactions: [] as NpcInteraction[],
   playerProfile: {
     name: "",
     age: "",
