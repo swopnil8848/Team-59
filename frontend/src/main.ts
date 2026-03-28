@@ -163,7 +163,7 @@ function renderLoader() {
   appRoot.innerHTML = `
     <div class="onboard onboard--loader">
       <div class="onboard-bg"></div>
-      <div class="onboard-content">
+      <div class="onboard-content onboard-content--center">
         <div class="loader">
           <img src="${Assets.onboarding.namecard}" alt="Mindtrail" style="max-width: 100%; height: auto; display: block;" />
         </div>
