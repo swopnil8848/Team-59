@@ -422,7 +422,7 @@ function renderLogin() {
             <div class="modal-title">LOGIN</div>
             <div class="form">
               <div>
-                <label>Your name</label>
+                <label  class="normal-text">Your name</label>
                 <input data-field="login-name" placeholder="Enter your name" />
                 <div class="error" data-error="login" style="display:none;"></div>
               </div>
