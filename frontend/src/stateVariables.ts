@@ -82,4 +82,16 @@ export const stateVariables = {
   cursorImage: new Image(),
   isHoldingMeditationKey: false,
   meditationStart: null as number | null,
+  selectedAvatarId: "Ophelia",
+  playerProfile: {
+    name: "",
+    age: "",
+    gender: "",
+    occupation: "",
+  } as {
+    name: string;
+    age: string;
+    gender: string;
+    occupation: string;
+  },
 };

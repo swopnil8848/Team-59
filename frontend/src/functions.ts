@@ -140,7 +140,7 @@ function createRandomHiddenCharacters(centerX: number, centerY: number) {
 }
 
 function loadPlayerSprites(): DirectionalSprites {
-  const basePath = "assets/character/images/characters/Ophelia";
+  const basePath = `assets/character/images/characters/${stateVariables.selectedAvatarId}`;
   return {
     front: loadCharacterImages("front", 4, basePath),
     back: loadCharacterImages("back", 4, basePath),
