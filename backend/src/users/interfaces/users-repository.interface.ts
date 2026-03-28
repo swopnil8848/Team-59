@@ -8,6 +8,7 @@ export interface IUsersRepository {
     id: string,
     data: {
       name?: string;
+      avatar?: string;
       email?: string;
       gender?: string;
       age?: number;

@@ -72,6 +72,7 @@ export class AuthService {
       user: toBaseUserDto({
         id: userId,
         name: null,
+        avatar: null,
         email,
         passwordHash: "",
         gender: null,
