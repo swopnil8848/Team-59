@@ -275,7 +275,7 @@ function renderHub() {
                     <div class="hub-menu">
                       <div class="hub-link" data-action="hub-controls"><span>CONTROL</span><span class="arrow">↗</span></div>
                       <div class="hub-link" data-action="hub-about"><span>ABOUT US</span><span class="arrow">↗</span></div>
-                      <div class="hub-link"><span>YOUR PROGRESS</span><span class="arrow">↗</span></div>
+                      <div class="hub-link" data-action="hub-progress"><span>YOUR PROGRESS</span><span class="arrow">↗</span></div>
                     </div>
                   </div>
                   <div class="hub-right">
@@ -324,6 +324,22 @@ function renderHub() {
               <img class="hub-controls-image modal-content" src="${controlsSrc}" alt="Game controls" />
             `,
   })}
+          ${renderHubModal({
+    id: "hub-progress-panel",
+    closeLabel: "Close progress",
+    panelClassName: "hub-panel--progress",
+    childrenHtml: `
+              <div class="modal-title">YOUR PROGRESS</div>
+              <div class="modal-content hub-progress-content">
+                <div class="progress-box">TOTAL GAMES PLAYED: 12</div>
+                <div class="progress-box">TOTAL INTERACTION SCORE: 30</div>
+                <div class="progress-footer">
+                  <div>Thanks for playing!</div>
+                  <div>Hope you had a great time—see you again on the trail 🌿</div>
+                </div>
+              </div>
+            `,
+  })}
         </div>
       </div>
     </div>
@@ -365,11 +381,14 @@ function renderHub() {
   const hubStage = appRoot.querySelector('[data-state]') as HTMLDivElement | null;
   const aboutPanel = appRoot.querySelector('[data-role="hub-about-panel"]') as HTMLDivElement | null;
   const controlsPanel = appRoot.querySelector('[data-role="hub-controls-panel"]') as HTMLDivElement | null;
-  const setPanelState = (state: "hub" | "about" | "controls") => {
+  const progressPanel = appRoot.querySelector('[data-role="hub-progress-panel"]') as HTMLDivElement | null;
+
+  const setPanelState = (state: "hub" | "about" | "controls" | "progress") => {
     if (!hubStage) return;
     hubStage.dataset.state = state;
     aboutPanel?.setAttribute("aria-hidden", state === "about" ? "false" : "true");
     controlsPanel?.setAttribute("aria-hidden", state === "controls" ? "false" : "true");
+    progressPanel?.setAttribute("aria-hidden", state === "progress" ? "false" : "true");
   };
 
   appRoot.querySelector('[data-action="hub-about"]')?.addEventListener("click", () => {
@@ -378,10 +397,16 @@ function renderHub() {
   appRoot.querySelector('[data-action="hub-controls"]')?.addEventListener("click", () => {
     setPanelState("controls");
   });
+  appRoot.querySelector('[data-action="hub-progress"]')?.addEventListener("click", () => {
+    setPanelState("progress");
+  });
   appRoot.querySelector('[data-action="hub-about-panel-close"]')?.addEventListener("click", () => {
     setPanelState("hub");
   });
   appRoot.querySelector('[data-action="hub-controls-panel-close"]')?.addEventListener("click", () => {
+    setPanelState("hub");
+  });
+  appRoot.querySelector('[data-action="hub-progress-panel-close"]')?.addEventListener("click", () => {
     setPanelState("hub");
   });
 }
