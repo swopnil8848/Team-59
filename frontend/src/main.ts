@@ -442,7 +442,12 @@ function renderRegister() {
           </div>
           <div class="modal-footer">
             <button class="primary-btn" data-action="register-continue" disabled>CONTINUE</button>
-            <button class="secondary-btn" data-action="go-login" type="button">ALREADY REGISTERED? LOGIN</button>
+            <div style="margin-top: 15px; text-align: center; font-size: 14px;">
+              Already have an account? 
+              <a href="#" data-action="go-login" style="color: #1C92B2; text-decoration: underline; font-weight: bold;">
+                Log In
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -625,8 +630,21 @@ function renderLogin() {
   `;
 
   const emailInput = appRoot.querySelector('[data-field="login-email"]') as HTMLInputElement | null;
+  const togglePasswordBtn = appRoot.querySelector('[data-action="toggle-password"]') as HTMLButtonElement | null;
   const passwordInput = appRoot.querySelector('[data-field="login-password"]') as HTMLInputElement | null;
   const loginBtn = appRoot.querySelector('[data-action="login-continue"]') as HTMLButtonElement | null;
+
+  togglePasswordBtn?.addEventListener("click", () => {
+    if (!passwordInput) return;
+    const isHidden = passwordInput.type === "password";
+    passwordInput.type = isHidden ? "text" : "password";
+
+    const eye = togglePasswordBtn.querySelector('[data-icon="eye"]') as HTMLElement | null;
+    const eyeOff = togglePasswordBtn.querySelector('[data-icon="eye-off"]') as HTMLElement | null;
+
+    if (eye) eye.style.display = isHidden ? "none" : "block";
+    if (eyeOff) eyeOff.style.display = isHidden ? "block" : "none";
+  });
 
   const setError = (key: string, message: string | null) => {
     const el = appRoot.querySelector(`[data-error="${key}"]`) as HTMLDivElement | null;
@@ -650,18 +668,16 @@ function renderLogin() {
     const password = (passwordInput?.value ?? "").trim();
     let hasError = false;
 
-    if (!email || !email.includes("@")) {
-      setError("login-email", "Enter a valid email.");
-      hasError = true;
-    } else setError("login-email", null);
+    // simple validation
+    if (!email || !email.includes("@")) { setError("login-email", "Enter a valid email."); hasError = true; }
+    else setError("login-email", null);
 
-    if (!password || password.length < 8) {
-      setError("login-password", "Password must be at least 8 characters.");
-      hasError = true;
-    } else setError("login-password", null);
+    if (!password || password.length < 8) { setError("login-password", "Password must be at least 8 characters."); hasError = true; }
+    else setError("login-password", null);
 
     if (hasError) return;
 
+    // Disable button & show progress text
     if (loginBtn) {
       loginBtn.disabled = true;
       loginBtn.textContent = "LOGGING IN...";
@@ -673,6 +689,8 @@ function renderLogin() {
       const token = body.data?.tokens?.accessToken;
       if (token) {
         setAuthToken(token);
+
+        // fetch user profile just like registration
         try {
           const uBody = await ApiService.getMe();
           if (uBody.success && uBody.data?.user) {
@@ -681,12 +699,15 @@ function renderLogin() {
             stateVariables.playerProfile.gender = uBody.data.user.gender || "";
             stateVariables.playerProfile.environment = uBody.data.user.environment || "";
           }
-        } catch (uErr) {
-          console.error("Failed to fetch user profile", uErr);
+        } catch (profileErr) {
+          console.error("Failed to fetch user profile", profileErr);
         }
+
+        // slide to hub
+        slideTo(renderHub);
       }
-      slideTo(renderHub);
     } catch (err: any) {
+      // show error & reset button
       setError("login-api", err.message || "Login failed");
       if (loginBtn) {
         loginBtn.disabled = false;
@@ -694,6 +715,7 @@ function renderLogin() {
       }
     }
   });
+
 }
 
 function startGame() {
