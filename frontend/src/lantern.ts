@@ -1,4 +1,9 @@
-import { LANTERN_BRIGHTNESS_DECREASE_RATE, LANTERN_BRIGHTNESS_RADIUS } from "./constants";
+import {
+  LANTERN_BRIGHTNESS_DECREASE_RATE,
+  LANTERN_BRIGHTNESS_RADIUS,
+  LANTERN_FOG_MAX_INNER_RADIUS,
+  LANTERN_FOG_MAX_OUTER_RADIUS,
+} from "./constants";
 import { drawEllipse } from "./functions";
 import { canvas } from "./main";
 import lantern from "./sprites/lantern";
@@ -10,6 +15,10 @@ export class Lantern {
   img: HTMLImageElement;
   maxRadiusInnerCircle: number;
   maxRadiusOuterCircle: number;
+  minRadiusInnerCircle: number;
+  minRadiusOuterCircle: number;
+  maxRadiusInnerCircleTarget: number;
+  maxRadiusOuterCircleTarget: number;
   decreaseLuminosity: number | null;
   setLuminosityInterval: number | null;
   resetLuminosityInterval: number | null;
@@ -24,9 +33,13 @@ export class Lantern {
     this.x = stateVariables.player.startPoint.x + 15;
     this.y = stateVariables.player.startPoint.y + 45;
     this.img = new Image();
-    this.maxRadiusInnerCircle = LANTERN_BRIGHTNESS_RADIUS;
-    this.maxRadiusOuterCircle =
+    this.minRadiusInnerCircle = LANTERN_BRIGHTNESS_RADIUS;
+    this.maxRadiusInnerCircle = this.minRadiusInnerCircle;
+    this.maxRadiusInnerCircleTarget = LANTERN_FOG_MAX_INNER_RADIUS;
+    this.minRadiusOuterCircle =
       Math.max(stateVariables.windowWidth, stateVariables.windowHeight) / 2;
+    this.maxRadiusOuterCircle = this.minRadiusOuterCircle;
+    this.maxRadiusOuterCircleTarget = LANTERN_FOG_MAX_OUTER_RADIUS;
     this.brightnessDecreaseRate = LANTERN_BRIGHTNESS_DECREASE_RATE;
     this.spritePos = 0;
     this.r = 14;
@@ -34,19 +47,15 @@ export class Lantern {
   }
 
   show(ctx: CanvasRenderingContext2D = stateVariables.ctx) {
-    if (stateVariables.player.isBlowingLantern) {
-      if (!this.blowingLantern) {
-        this.blowingLantern = setInterval(() => {
-          if (this.r < 28) {
-            this.r += 1;
-          } else {
-            clearInterval(this.blowingLantern!);
-            this.blowingLantern = null;
-          }
-        }, 100);
-      }
+    const minR = 14;
+    const maxR = 28;
+    const growSpeed = 0.6;
+    const shrinkSpeed = 0.3;
+
+    if (stateVariables.isHoldingMeditationKey) {
+      this.r = Math.min(maxR, this.r + growSpeed);
     } else {
-      this.r = 14;
+      this.r = Math.max(minR, this.r - shrinkSpeed);
     }
 
     if (stateVariables.player.direction == "l") {
@@ -117,6 +126,33 @@ export class Lantern {
   }
 
   showLuminosity() {
+    const now = Date.now();
+    const holdDuration = stateVariables.lightDurationMs;
+    const minInner = this.minRadiusInnerCircle;
+    const maxInner = Math.max(this.minRadiusInnerCircle, this.maxRadiusInnerCircleTarget);
+    const minOuter = this.minRadiusOuterCircle;
+    const maxOuter = Math.max(this.minRadiusOuterCircle, this.maxRadiusOuterCircleTarget);
+
+    if (stateVariables.isHoldingMeditationKey && stateVariables.meditationStart != null) {
+      const progress = Math.min(
+        (now - stateVariables.meditationStart) / holdDuration,
+        1
+      );
+      this.maxRadiusInnerCircle = minInner + (maxInner - minInner) * progress;
+      this.maxRadiusOuterCircle = minOuter + (maxOuter - minOuter) * progress;
+    } else {
+      const shrinkInner = 2;
+      const shrinkOuter = 2;
+      this.maxRadiusInnerCircle = Math.max(
+        minInner,
+        this.maxRadiusInnerCircle - shrinkInner
+      );
+      this.maxRadiusOuterCircle = Math.max(
+        minOuter,
+        this.maxRadiusOuterCircle - shrinkOuter
+      );
+    }
+
     const gradient = stateVariables.ctx.createRadialGradient(
       this.x + 5,
       this.y + 35,
@@ -135,17 +171,8 @@ export class Lantern {
     stateVariables.ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
   changeLuminosity() {
-    if (!this.decreaseLuminosity) {
-      this.decreaseLuminosity = setInterval(() => {
-        if (this.maxRadiusInnerCircle <= 0) {
-          this.maxRadiusInnerCircle = 0;
-          clearInterval(this.decreaseLuminosity!);
-          this.decreaseLuminosity = null;
-        } else {
-          this.maxRadiusInnerCircle -= this.brightnessDecreaseRate;
-        }
-      }, 200);
-    }
+    // fog size now driven by meditation duration in showLuminosity.
+    return;
   }
   resetLuminosity() {
     this.brightnessDecreaseRate = LANTERN_BRIGHTNESS_DECREASE_RATE;

@@ -1,5 +1,4 @@
 import { keyDown, stateVariables } from "./stateVariables";
-import { LIGHT_OF_BLESSINGS_DURATION } from "./constants";
 
 window.addEventListener(
   "keydown",
@@ -64,20 +63,26 @@ export function handleMovementControls() {
 }
 
 export function handleOtherControls() {
-  if (stateVariables.keyState[69]) {
+  const isHoldingE = !!stateVariables.keyState[69];
+  const isMovingKey =
+    !!stateVariables.keyState[87] ||
+    !!stateVariables.keyState[65] ||
+    !!stateVariables.keyState[83] ||
+    !!stateVariables.keyState[68];
+  const shouldMeditate = isHoldingE && !isMovingKey;
+
+  if (shouldMeditate) {
     if (!keyDown.E) {
       const now = Date.now();
-      if (now - stateVariables.lightLastUsedMs >= stateVariables.lightCooldownMs) {
-        stateVariables.lightLastUsedMs = now;
-        stateVariables.lantern.setLuminosity();
-        const reset = setTimeout(() => {
-          stateVariables.lantern.resetLuminosity();
-          clearTimeout(reset);
-        }, LIGHT_OF_BLESSINGS_DURATION);
-      }
+      stateVariables.isHoldingMeditationKey = true;
+      stateVariables.meditationStart = now;
       keyDown.E = true;
     }
   } else {
+    if (keyDown.E && stateVariables.isHoldingMeditationKey) {
+      stateVariables.isHoldingMeditationKey = false;
+      stateVariables.meditationStart = null;
+    }
     keyDown.E = false;
   }
 }

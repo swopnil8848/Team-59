@@ -1,6 +1,6 @@
 import "./style.css";
 import "./controls";
-import { adjustCanvasSize, initializeGame } from "./functions";
+import { adjustCanvasSize, drawChannelledAnimation, initializeGame } from "./functions";
 import { handleMovementControls, handleOtherControls } from "./controls";
 import { GameState, stateVariables } from "./stateVariables";
 
@@ -34,6 +34,10 @@ function draw() {
     }
     return true;
   });
+
+  if (stateVariables.isHoldingMeditationKey && stateVariables.meditationStart != null) {
+    drawChannelledAnimation();
+  }
 
   const remainingMs = stateVariables.endTimeMs - Date.now();
   const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));

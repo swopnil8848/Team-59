@@ -120,3 +120,62 @@ export function initializeGame() {
   stateVariables.endTimeMs = Date.now() + 120000;
   stateVariables.gameState = GameState.running;
 }
+
+export function drawChannelledAnimation() {
+  if (!stateVariables.isHoldingMeditationKey || stateVariables.meditationStart == null) {
+    return;
+  }
+
+  const holdDuration = stateVariables.lightDurationMs;
+  const text = "Meditating";
+  const currentTime = Date.now();
+  const elapsedTime = currentTime - stateVariables.meditationStart;
+  const remainingTime = Math.max(0, holdDuration - elapsedTime);
+  const progress = 1 - Math.min(elapsedTime / holdDuration, 1);
+
+  const barWidth = 360;
+  const barHeight = 8;
+  const barX = (stateVariables.windowWidth - barWidth) / 2;
+  const barY = Math.floor(stateVariables.windowHeight * 0.78);
+  const radius = barHeight / 2;
+
+  const drawRoundedRect = (
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    r: number
+  ) => {
+    const clampedR = Math.min(r, width / 2, height / 2);
+    stateVariables.ctx.beginPath();
+    stateVariables.ctx.moveTo(x + clampedR, y);
+    stateVariables.ctx.arcTo(x + width, y, x + width, y + height, clampedR);
+    stateVariables.ctx.arcTo(x + width, y + height, x, y + height, clampedR);
+    stateVariables.ctx.arcTo(x, y + height, x, y, clampedR);
+    stateVariables.ctx.arcTo(x, y, x + width, y, clampedR);
+    stateVariables.ctx.closePath();
+  };
+
+  stateVariables.ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+  drawRoundedRect(barX, barY, barWidth, barHeight, radius);
+  stateVariables.ctx.fill();
+
+  stateVariables.ctx.fillStyle = "rgba(255, 255, 255, 0.18)";
+  drawRoundedRect(barX, barY, barWidth, barHeight, radius);
+  stateVariables.ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+  stateVariables.ctx.stroke();
+
+  const fillWidth = Math.max(0, barWidth * progress);
+  stateVariables.ctx.fillStyle = "#e6f2f0";
+  drawRoundedRect(barX, barY, fillWidth, barHeight, radius);
+  stateVariables.ctx.fill();
+
+  stateVariables.ctx.font = "16px Outfit";
+  stateVariables.ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+  stateVariables.ctx.textAlign = "center";
+  stateVariables.ctx.fillText(
+    `${text} ${(remainingTime / 1000).toFixed(1)}s`,
+    stateVariables.windowWidth / 2,
+    barY - 10
+  );
+}

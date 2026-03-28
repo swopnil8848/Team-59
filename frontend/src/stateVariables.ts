@@ -48,4 +48,6 @@ export const stateVariables = {
   lightDurationMs: 5000,
   lightLastUsedMs: 0,
   assetsLoadCount: 0,
+  isHoldingMeditationKey: false,
+  meditationStart: null as number | null,
 };
