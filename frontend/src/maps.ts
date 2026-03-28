@@ -127,6 +127,20 @@ export class Maps {
 
   checkCollision(x: number, y: number) {
     let has_collided = false;
+
+    // checks main-map's boundary collision based on the image size
+    let mapWidth = this.mapData[this.name].size === "native" ? (this.img.naturalWidth || this.img.width) : this.mapData[this.name].size.width;
+    let mapHeight = this.mapData[this.name].size === "native" ? (this.img.naturalHeight || this.img.height) : this.mapData[this.name].size.height;
+
+    if (mapWidth > 0 && mapHeight > 0) {
+      let pX = stateVariables.player.startPoint.x - x;
+      let pY = stateVariables.player.startPoint.y - y;
+
+      if (pX < 0 || pX > mapWidth || pY < 0 || pY > mapHeight) {
+        return true;
+      }
+    }
+
     let collidersLength = this.mapData[this.name].colliders.length;
     for (let i = 0; i < collidersLength; i++) {
       let collider = this.mapData[this.name].colliders[i];
