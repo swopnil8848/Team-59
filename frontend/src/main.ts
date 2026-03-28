@@ -259,10 +259,10 @@ function renderHub() {
             </div>
           </div>
           ${renderHubModal({
-            id: "hub-about-panel",
-            closeLabel: "Close about",
-            panelClassName: "hub-panel--about",
-            childrenHtml: `
+    id: "hub-about-panel",
+    closeLabel: "Close about",
+    panelClassName: "hub-panel--about",
+    childrenHtml: `
               <div class="modal-title">ABOUT US</div>
               <div class="modal-content">
                 <div class="modal-text">
@@ -276,16 +276,16 @@ function renderHub() {
                 </div>
               </div>
             `,
-          })}
+  })}
           ${renderHubModal({
-            id: "hub-controls-panel",
-            closeLabel: "Close controls",
-            panelClassName: "hub-panel--controls",
-            childrenHtml: `
+    id: "hub-controls-panel",
+    closeLabel: "Close controls",
+    panelClassName: "hub-panel--controls",
+    childrenHtml: `
               <div class="modal-title">CONTROLS</div>
               <img class="hub-controls-image modal-content" src="${controlsSrc}" alt="Game controls" />
             `,
-          })}
+  })}
         </div>
       </div>
     </div>
@@ -508,26 +508,40 @@ function renderLogin() {
       <div class="onboard-content onboard-content--center">
         <div class="modal">
           <div class="modal-inner">
-            <div class="modal-title">LOGIN</div>
+            <div class="modal-title">LOG IN</div>
             <div class="form modal-content">
               <div>
-                <label>Your name</label>
-                <input data-field="login-name" placeholder="Enter your name" />
+                <label>Email address</label>
+                <input data-field="login-email" type="email" placeholder="Enter your email" />
                 <div class="error" data-error="login" style="display:none;"></div>
+              </div>
+              <div>
+                <label>Password</label>
+                <div class="password-wrapper" style="position: relative; display: flex; align-items: center;">
+                  <input data-field="login-password" type="password" placeholder="Enter your password" style="width: 100%; padding-right: 40px;" />
+                  <button type="button" data-action="toggle-password" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; padding: 0; color: inherit;">
+                    <svg data-icon="eye" style="display: block; width: 20px; height: 20px; fill: currentColor; opacity: 0.6;" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                    <svg data-icon="eye-off" style="display: none; width: 20px; height: 20px; fill: currentColor; opacity: 0.6;" viewBox="0 0 24 24"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
           <div class="modal-footer">
-            <button class="primary-btn" data-action="login-continue">LOGIN</button>
-            <button class="secondary-btn" data-action="back-register" type="button">BACK TO REGISTER</button>
+            <button class="primary-btn" data-action="login-continue" style="width: 100%;">LOGIN</button>
+            <div style="margin-top: 15px; text-align: center; font-size: 14px;">
+              Don't have an account? <a href="#" data-action="back-register" style="color: #1C92B2; text-decoration: underline; font-weight: bold;">Sign up</a>
+            </div>
           </div>
         </div>
       </div>
     </div>
   `;
 
-  const loginInput = appRoot.querySelector('[data-field="login-name"]') as HTMLInputElement | null;
+  const loginEmailInput = appRoot.querySelector('[data-field="login-email"]') as HTMLInputElement | null;
+  const loginPasswordInput = appRoot.querySelector('[data-field="login-password"]') as HTMLInputElement | null;
   const loginError = appRoot.querySelector('[data-error="login"]') as HTMLDivElement | null;
+  const togglePasswordBtn = appRoot.querySelector('[data-action="toggle-password"]') as HTMLButtonElement | null;
 
   const setLoginError = (message: string | null) => {
     if (!loginError) return;
@@ -540,17 +554,40 @@ function renderLogin() {
     }
   };
 
-  appRoot.querySelector('[data-action="back-register"]')?.addEventListener("click", () => {
+  appRoot.querySelector('[data-action="back-register"]')?.addEventListener("click", (e) => {
+    e.preventDefault();
     slideTo(renderRegister);
   });
 
+  togglePasswordBtn?.addEventListener("click", () => {
+    if (!loginPasswordInput) return;
+    const isPassword = loginPasswordInput.type === "password";
+    loginPasswordInput.type = isPassword ? "text" : "password";
+    const iconEye = togglePasswordBtn.querySelector('[data-icon="eye"]') as SVGElement | null;
+    const iconEyeOff = togglePasswordBtn.querySelector('[data-icon="eye-off"]') as SVGElement | null;
+    if (iconEye) iconEye.style.display = isPassword ? "none" : "block";
+    if (iconEyeOff) iconEyeOff.style.display = isPassword ? "block" : "none";
+  });
+
   appRoot.querySelector('[data-action="login-continue"]')?.addEventListener("click", () => {
-    const name = (loginInput?.value ?? "").trim();
-    if (name.length < 2) {
-      setLoginError("Please enter at least 2 characters.");
+    const email = (loginEmailInput?.value ?? "").trim();
+    const password = (loginPasswordInput?.value ?? "").trim();
+
+    const atIndex = email.indexOf("@");
+    const dotIndex = email.lastIndexOf(".");
+    const validEmail = atIndex > 0 && dotIndex > atIndex + 1 && dotIndex < email.length - 1;
+
+    if (!validEmail) {
+      setLoginError("Please enter a valid email address.");
       return;
     }
-    stateVariables.playerProfile.name = name;
+
+    if (password.length < 1) {
+      setLoginError("Please enter your password.");
+      return;
+    }
+
+    stateVariables.playerProfile.name = email.split('@')[0] || "Player";
     setLoginError(null);
     slideTo(renderHub);
   });
