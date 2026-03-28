@@ -107,11 +107,11 @@ export const stateVariables = {
     name: "",
     age: "",
     gender: "",
-    occupation: "",
+    environment: "",
   } as {
     name: string;
     age: string;
     gender: string;
-    occupation: string;
+    environment: string;
   },
 };

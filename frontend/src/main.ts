@@ -10,6 +10,7 @@ import {
 import { handleMovementControls, handleOtherControls } from "./controls";
 import { GameState, stateVariables } from "./stateVariables";
 import { showGameOverOverlay } from "./gameOverOverlay";
+import { ApiService, getAuthToken, setAuthToken, clearAuthToken } from "./services/api";
 
 type AvatarOption = {
   id: string;
@@ -83,6 +84,22 @@ function preloadImage(src: string) {
     img.onload = () => resolve();
     img.onerror = () => resolve();
     img.src = src;
+  });
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number) {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error("timeout")), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        window.clearTimeout(timer);
+        reject(err);
+      }
+    );
   });
 }
 
@@ -169,7 +186,24 @@ function renderLoader() {
     (document as any).fonts?.ready?.catch?.(() => undefined) ?? Promise.resolve(),
     Promise.all(assetsToPreload.map((src) => preloadImage(src))),
     new Promise((r) => window.setTimeout(r, 800)),
-  ]).then(() => {
+  ]).then(async () => {
+    const token = getAuthToken();
+    if (token) {
+      try {
+        const body = await withTimeout(ApiService.getMe(), 1200);
+        if (body.success && body.data && body.data.user) {
+          stateVariables.playerProfile.name = body.data.user.name || "";
+          stateVariables.playerProfile.age = body.data.user.age?.toString() || "";
+          stateVariables.playerProfile.gender = body.data.user.gender || "";
+          stateVariables.playerProfile.environment = body.data.user.environment || "";
+          slideTo(renderHub);
+          return;
+        }
+      } catch (e) {
+        console.error("Auth verify error:", e);
+        clearAuthToken();
+      }
+    }
     slideTo(renderInfo);
   });
 }
@@ -205,6 +239,10 @@ function renderInfo() {
 }
 
 function renderHub() {
+  if (!getAuthToken()) {
+    slideTo(renderLogin);
+    return;
+  }
   stopAvatarAnimation();
   canvas.style.display = "none";
   appRoot.style.display = "block";
@@ -367,30 +405,39 @@ function renderRegister() {
                 <div class="error" data-error="name" style="display:none;"></div>
               </div>
               <div>
-                <label>Your age</label>
-                <input data-field="age" placeholder="Age (optional)" inputmode="numeric" />
+                <label>Email *</label>
+                <input data-field="email" type="email" placeholder="Your email" />
+                <div class="error" data-error="email" style="display:none;"></div>
+              </div>
+              <div>
+                <label>Password *</label>
+                <input data-field="password" type="password" placeholder="Min 8 characters" />
+                <div class="error" data-error="password" style="display:none;"></div>
+              </div>
+              <div>
+                <label>Your age (optional)</label>
+                <input data-field="age" placeholder="Age" inputmode="numeric" />
                 <div class="error" data-error="age" style="display:none;"></div>
               </div>
               <div>
                 <label>Gender</label>
                 <div class="form-grid" data-group="gender">
-                  <button class="pill" type="button" data-value="Male">Male</button>
-                  <button class="pill" type="button" data-value="Female">Female</button>
-                  <button class="pill" type="button" data-value="Non-binary">Non-binary</button>
-                  <button class="pill" type="button" data-value="Prefer not to say">Prefer not to say</button>
+                  <button class="pill" type="button" data-value="male">Male</button>
+                  <button class="pill" type="button" data-value="female">Female</button>
+                  <button class="pill" type="button" data-value="other">Non-binary</button>
                 </div>
                 <div class="error" data-error="gender" style="display:none;"></div>
               </div>
               <div>
-                <label>What do you do?</label>
-                <div class="form-grid" data-group="occupation">
-                  <button class="pill" type="button" data-value="Student">Student</button>
-                  <button class="pill" type="button" data-value="Working Professional">Working Professional</button>
-                  <button class="pill" type="button" data-value="Self-Employed">Self-Employed</button>
-                  <button class="pill" type="button" data-value="Others">Others</button>
+                <label>Primary Environment</label>
+                <div class="form-grid" data-group="environment">
+                  <button class="pill" type="button" data-value="school">School</button>
+                  <button class="pill" type="button" data-value="office">Office</button>
+                  <button class="pill" type="button" data-value="relationship">Relationship</button>
                 </div>
-                <div class="error" data-error="occupation" style="display:none;"></div>
+                <div class="error" data-error="environment" style="display:none;"></div>
               </div>
+              <div class="error" data-error="api" style="display:none; text-align:center; margin-top: 10px; color: #ff4d4d;"></div>
             </div>
           </div>
           <div class="modal-footer">
@@ -403,6 +450,8 @@ function renderRegister() {
   `;
 
   const nameInput = appRoot.querySelector('[data-field="name"]') as HTMLInputElement | null;
+  const emailInput = appRoot.querySelector('[data-field="email"]') as HTMLInputElement | null;
+  const passwordInput = appRoot.querySelector('[data-field="password"]') as HTMLInputElement | null;
   const ageInput = appRoot.querySelector('[data-field="age"]') as HTMLInputElement | null;
   const continueButton = appRoot.querySelector('[data-action="register-continue"]') as HTMLButtonElement | null;
 
@@ -420,29 +469,30 @@ function renderRegister() {
 
   const validate = (showErrors: boolean) => {
     const name = (nameInput?.value ?? "").trim();
+    const email = (emailInput?.value ?? "").trim();
+    const password = (passwordInput?.value ?? "").trim();
     const ageRaw = (ageInput?.value ?? "").trim();
 
     const nameOk = name.length === 0 || name.length >= 2;
+    const emailOk = email.length > 0 && email.includes("@");
+    const passwordOk = password.length >= 8;
     const ageOk =
       ageRaw.length === 0 ||
       (/^[0-9]{1,3}$/.test(ageRaw) && Number(ageRaw) >= 6 && Number(ageRaw) <= 120);
 
     const genderOk = stateVariables.playerProfile.gender.length > 0;
-    const occupationOk = stateVariables.playerProfile.occupation.length > 0;
+    const environmentOk = stateVariables.playerProfile.environment.length > 0;
 
     if (showErrors) {
-      setError("name", nameOk ? null : "Name must be at least 2 characters (or leave it empty).");
-      setError("age", ageOk ? null : "Age must be a number between 6 and 120 (or leave it empty).");
+      setError("name", nameOk ? null : "Name must be at least 2 characters.");
+      setError("email", emailOk ? null : "Please enter a valid email.");
+      setError("password", passwordOk ? null : "Password must be at least 8 characters.");
+      setError("age", ageOk ? null : "Age must be a valid number.");
       setError("gender", genderOk ? null : "Please choose a gender option.");
-      setError("occupation", occupationOk ? null : "Please choose what you do.");
-      if (nameInput) nameInput.setAttribute("aria-invalid", nameOk ? "false" : "true");
-      if (ageInput) ageInput.setAttribute("aria-invalid", ageOk ? "false" : "true");
-    } else {
-      if (nameInput) nameInput.setAttribute("aria-invalid", "false");
-      if (ageInput) ageInput.setAttribute("aria-invalid", "false");
+      setError("environment", environmentOk ? null : "Please choose an environment.");
     }
 
-    return nameOk && ageOk && genderOk && occupationOk;
+    return nameOk && emailOk && passwordOk && ageOk && genderOk && environmentOk;
   };
 
   const refreshContinue = () => {
@@ -450,7 +500,7 @@ function renderRegister() {
     continueButton.disabled = !validate(false);
   };
 
-  const wireChipGroup = (group: "gender" | "occupation") => {
+  const wireChipGroup = (group: "gender" | "environment") => {
     const container = appRoot.querySelector(`[data-group="${group}"]`) as HTMLDivElement | null;
     if (!container) return;
     container.querySelectorAll<HTMLButtonElement>(".pill").forEach((button) => {
@@ -461,25 +511,20 @@ function renderRegister() {
         button.dataset.selected = "true";
         const value = button.dataset.value ?? "";
         if (group === "gender") stateVariables.playerProfile.gender = value;
-        if (group === "occupation") stateVariables.playerProfile.occupation = value;
-        if (group === "gender") setError("gender", null);
-        if (group === "occupation") setError("occupation", null);
+        if (group === "environment") stateVariables.playerProfile.environment = value;
+        setError(group, null);
         refreshContinue();
       });
     });
   };
 
   wireChipGroup("gender");
-  wireChipGroup("occupation");
+  wireChipGroup("environment");
 
-  nameInput?.addEventListener("input", () => {
-    setError("name", null);
-    refreshContinue();
-  });
-  ageInput?.addEventListener("input", () => {
-    setError("age", null);
-    refreshContinue();
-  });
+  nameInput?.addEventListener("input", () => { setError("name", null); refreshContinue(); });
+  emailInput?.addEventListener("input", () => { setError("email", null); refreshContinue(); });
+  passwordInput?.addEventListener("input", () => { setError("password", null); refreshContinue(); });
+  ageInput?.addEventListener("input", () => { setError("age", null); refreshContinue(); });
 
   refreshContinue();
 
@@ -487,13 +532,54 @@ function renderRegister() {
     slideTo(renderLogin);
   });
 
-  appRoot.querySelector('[data-action="register-continue"]')?.addEventListener("click", () => {
+  appRoot.querySelector('[data-action="register-continue"]')?.addEventListener("click", async () => {
     if (!validate(true)) return;
-    const name = nameInput?.value ?? "";
-    const age = ageInput?.value ?? "";
-    stateVariables.playerProfile.name = name.trim();
-    stateVariables.playerProfile.age = age.trim();
-    slideTo(renderHub);
+    const email = emailInput?.value.trim() ?? "";
+    const password = passwordInput?.value.trim() ?? "";
+    const name = nameInput?.value.trim() ?? "";
+    const age = ageInput?.value.trim() ?? "";
+
+    if (!continueButton) return;
+    continueButton.disabled = true;
+    continueButton.textContent = "REGISTERING...";
+    setError("api", null);
+
+    try {
+      const regBody = await ApiService.register(email, password);
+      const token = regBody.data?.tokens?.accessToken;
+      if (token) {
+        setAuthToken(token);
+        const profileData: any = {
+          gender: stateVariables.playerProfile.gender,
+          environment: stateVariables.playerProfile.environment,
+        };
+        if (name) profileData.name = name;
+        if (age) profileData.age = Number(age);
+
+        try {
+          await ApiService.updateMe(profileData);
+          stateVariables.playerProfile.name = name;
+          stateVariables.playerProfile.age = age;
+          slideTo(renderHub);
+          return;
+        } catch (patchErr) {
+          console.error("Profile update failed:", patchErr);
+        }
+      }
+      slideTo(renderHub);
+    } catch (err: any) {
+      // Hackathon-friendly fallback: allow the user to continue even if backend is unreachable.
+      console.error("Registration failed, continuing offline:", err);
+      stateVariables.playerProfile.name = name;
+      stateVariables.playerProfile.age = age;
+      setError(
+        "api",
+        "Server unreachable — continuing in offline mode (progress will stay on this device)."
+      );
+      continueButton.textContent = "CONTINUE";
+      continueButton.disabled = false;
+      window.setTimeout(() => slideTo(renderHub), 450);
+    }
   });
 }
 
@@ -538,19 +624,19 @@ function renderLogin() {
     </div>
   `;
 
-  const loginEmailInput = appRoot.querySelector('[data-field="login-email"]') as HTMLInputElement | null;
-  const loginPasswordInput = appRoot.querySelector('[data-field="login-password"]') as HTMLInputElement | null;
-  const loginError = appRoot.querySelector('[data-error="login"]') as HTMLDivElement | null;
-  const togglePasswordBtn = appRoot.querySelector('[data-action="toggle-password"]') as HTMLButtonElement | null;
+  const emailInput = appRoot.querySelector('[data-field="login-email"]') as HTMLInputElement | null;
+  const passwordInput = appRoot.querySelector('[data-field="login-password"]') as HTMLInputElement | null;
+  const loginBtn = appRoot.querySelector('[data-action="login-continue"]') as HTMLButtonElement | null;
 
-  const setLoginError = (message: string | null) => {
-    if (!loginError) return;
+  const setError = (key: string, message: string | null) => {
+    const el = appRoot.querySelector(`[data-error="${key}"]`) as HTMLDivElement | null;
+    if (!el) return;
     if (!message) {
-      loginError.textContent = "";
-      loginError.style.display = "none";
+      el.textContent = "";
+      el.style.display = "none";
     } else {
-      loginError.textContent = message;
-      loginError.style.display = "block";
+      el.textContent = message;
+      el.style.display = "block";
     }
   };
 
@@ -559,41 +645,62 @@ function renderLogin() {
     slideTo(renderRegister);
   });
 
-  togglePasswordBtn?.addEventListener("click", () => {
-    if (!loginPasswordInput) return;
-    const isPassword = loginPasswordInput.type === "password";
-    loginPasswordInput.type = isPassword ? "text" : "password";
-    const iconEye = togglePasswordBtn.querySelector('[data-icon="eye"]') as SVGElement | null;
-    const iconEyeOff = togglePasswordBtn.querySelector('[data-icon="eye-off"]') as SVGElement | null;
-    if (iconEye) iconEye.style.display = isPassword ? "none" : "block";
-    if (iconEyeOff) iconEyeOff.style.display = isPassword ? "block" : "none";
-  });
+  loginBtn?.addEventListener("click", async () => {
+    const email = (emailInput?.value ?? "").trim();
+    const password = (passwordInput?.value ?? "").trim();
+    let hasError = false;
 
-  appRoot.querySelector('[data-action="login-continue"]')?.addEventListener("click", () => {
-    const email = (loginEmailInput?.value ?? "").trim();
-    const password = (loginPasswordInput?.value ?? "").trim();
+    if (!email || !email.includes("@")) {
+      setError("login-email", "Enter a valid email.");
+      hasError = true;
+    } else setError("login-email", null);
 
-    const atIndex = email.indexOf("@");
-    const dotIndex = email.lastIndexOf(".");
-    const validEmail = atIndex > 0 && dotIndex > atIndex + 1 && dotIndex < email.length - 1;
+    if (!password || password.length < 8) {
+      setError("login-password", "Password must be at least 8 characters.");
+      hasError = true;
+    } else setError("login-password", null);
 
-    if (!validEmail) {
-      setLoginError("Please enter a valid email address.");
-      return;
+    if (hasError) return;
+
+    if (loginBtn) {
+      loginBtn.disabled = true;
+      loginBtn.textContent = "LOGGING IN...";
     }
+    setError("login-api", null);
 
-    if (password.length < 1) {
-      setLoginError("Please enter your password.");
-      return;
+    try {
+      const body = await ApiService.login(email, password);
+      const token = body.data?.tokens?.accessToken;
+      if (token) {
+        setAuthToken(token);
+        try {
+          const uBody = await ApiService.getMe();
+          if (uBody.success && uBody.data?.user) {
+            stateVariables.playerProfile.name = uBody.data.user.name || "";
+            stateVariables.playerProfile.age = uBody.data.user.age?.toString() || "";
+            stateVariables.playerProfile.gender = uBody.data.user.gender || "";
+            stateVariables.playerProfile.environment = uBody.data.user.environment || "";
+          }
+        } catch (uErr) {
+          console.error("Failed to fetch user profile", uErr);
+        }
+      }
+      slideTo(renderHub);
+    } catch (err: any) {
+      setError("login-api", err.message || "Login failed");
+      if (loginBtn) {
+        loginBtn.disabled = false;
+        loginBtn.textContent = "LOGIN";
+      }
     }
-
-    stateVariables.playerProfile.name = email.split('@')[0] || "Player";
-    setLoginError(null);
-    slideTo(renderHub);
   });
 }
 
 function startGame() {
+  if (!getAuthToken()) {
+    slideTo(renderLogin);
+    return;
+  }
   stopAvatarAnimation();
   appRoot.style.display = "none";
   canvas.style.display = "block";
