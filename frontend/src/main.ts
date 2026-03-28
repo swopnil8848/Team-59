@@ -85,6 +85,30 @@ function preloadImage(src: string) {
   });
 }
 
+type HubModalOptions = {
+  id: string;
+  childrenHtml: string;
+  className?: string;
+  closeLabel?: string;
+};
+
+function renderHubModal({ id, childrenHtml, className = "", closeLabel = "Close" }: HubModalOptions) {
+  return `
+    <div class="hub-panel hub-panel--about" data-role="${id}" aria-hidden="true">
+      <div class="hub-modal-shell">
+        <button class="hub-modal-close" type="button" data-action="${id}-close" aria-label="${closeLabel}">
+          X
+        </button>
+        <div class="modal hub hub-modal ${className}">
+          <div class="modal-inner">
+            ${childrenHtml}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function updateMousePosition(e: PointerEvent) {
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
@@ -193,33 +217,53 @@ function renderHub() {
       </div>
       <div class="onboard-bg"></div>
       <div class="onboard-content onboard-content--center">
-        <div class="modal hub">
-          <div class="modal-inner">
-            <div class="modal-title">THE SPACE IS YOURS.</div>
-            <div class="hub-grid">
-              <div>
-                <div class="hub-menu">
-                  <div class="hub-link"><span>CONTROL</span><span class="arrow">↗</span></div>
-                  <div class="hub-link"><span>ABOUT US</span><span class="arrow">↗</span></div>
-                  <div class="hub-link"><span>YOUR PROGRESS</span><span class="arrow">↗</span></div>
+        <div class="hub-stage" data-state="hub">
+          <div class="hub-panel hub-panel--hub" data-role="hub-panel">
+            <div class="modal hub">
+              <div class="modal-inner">
+                <div class="modal-title">THE SPACE IS YOURS.</div>
+                <div class="hub-grid">
+                  <div>
+                    <div class="hub-menu">
+                      <div class="hub-link"><span>CONTROL</span><span class="arrow">↗</span></div>
+                      <div class="hub-link" data-action="hub-about"><span>ABOUT US</span><span class="arrow">↗</span></div>
+                      <div class="hub-link"><span>YOUR PROGRESS</span><span class="arrow">↗</span></div>
+                    </div>
+                  </div>
+                  <div class="hub-right">
+                    <div class="avatar-label">CHOOSE YOUR AVATAR</div>
+                    <div class="hub-avatar-row">
+                      <button class="hub-avatar-arrow" type="button" data-action="avatar-prev" ${avatars.length <= 1 ? "disabled" : ""}>&lsaquo;</button>
+                      <div class="hub-avatar">
+                        <img alt="Avatar" data-role="hub-avatar-img" src="${avatar.previewSrc}" />
+                      </div>
+                      <button class="hub-avatar-arrow" type="button" data-action="avatar-next" ${avatars.length <= 1 ? "disabled" : ""}>&rsaquo;</button>
+                    </div>
+                    <div class="hub-avatar-name" data-role="hub-avatar-name">${avatar.label}</div>
+                  </div>
                 </div>
               </div>
-              <div class="hub-right">
-                <div class="avatar-label">CHOOSE YOUR AVATAR</div>
-                <div class="hub-avatar-row">
-                  <button class="hub-avatar-arrow" type="button" data-action="avatar-prev" ${avatars.length <= 1 ? "disabled" : ""}>&lsaquo;</button>
-                  <div class="hub-avatar">
-                    <img alt="Avatar" data-role="hub-avatar-img" src="${avatar.previewSrc}" />
-                  </div>
-                  <button class="hub-avatar-arrow" type="button" data-action="avatar-next" ${avatars.length <= 1 ? "disabled" : ""}>&rsaquo;</button>
-                </div>
-                <div class="hub-avatar-name" data-role="hub-avatar-name">${avatar.label}</div>
+              <div class="modal-footer">
+                <button class="primary-btn" data-action="hub-enter">ENTER THE WORLD</button>
               </div>
             </div>
           </div>
-          <div class="modal-footer">
-            <button class="primary-btn" data-action="hub-enter">GET STARTED</button>
-          </div>
+          ${renderHubModal({
+            id: "hub-about-panel",
+            closeLabel: "Close about",
+            childrenHtml: `
+              <div class="modal-title">ABOUT US</div>
+              <div class="modal-text">
+                <div>Mindtrail is a gamified mental health experience built to reduce stigma and encourage early support—especially in culturally conservative communities where such conversations are often avoided.</div>
+                <div style="margin-top: 14px;">We believe awareness begins with small, safe interactions. Through an interactive journey, users step into the role of a guide—walking along pathways, engaging with characters, and navigating real-life situations. By helping others, they gradually build self-awareness, empathy, and confidence to address their own mental health.</div>
+                <div style="margin-top: 14px;">Our approach blends psychology with storytelling—making difficult conversations feel natural, relatable, and stigma-free.</div>
+              </div>
+              <div class="about-credit">
+                <div>TEAM PONEGLYPH</div>
+                <div>Nepal-US Hackathon 2026</div>
+              </div>
+            `,
+          })}
         </div>
       </div>
     </div>
@@ -257,6 +301,22 @@ function renderHub() {
   appRoot.querySelector('[data-action="hub-enter"]')?.addEventListener("click", () => {
     slideTo(startGame);
   });
+
+  const hubStage = appRoot.querySelector('[data-state]') as HTMLDivElement | null;
+  const aboutPanel = appRoot.querySelector('[data-role="hub-about-panel"]') as HTMLDivElement | null;
+  const openAbout = () => {
+    if (!hubStage || !aboutPanel) return;
+    hubStage.dataset.state = "about";
+    aboutPanel.setAttribute("aria-hidden", "false");
+  };
+  const closeAbout = () => {
+    if (!hubStage || !aboutPanel) return;
+    hubStage.dataset.state = "hub";
+    aboutPanel.setAttribute("aria-hidden", "true");
+  };
+
+  appRoot.querySelector('[data-action="hub-about"]')?.addEventListener("click", openAbout);
+  appRoot.querySelector('[data-action="hub-about-panel-close"]')?.addEventListener("click", closeAbout);
 }
 
 function renderRegister() {
