@@ -27,7 +27,7 @@ type AvatarOption = {
   gender?: "FEMALE" | "MALE" | "OTHER";
 };
 
-const USE_DUMMY_PROGRESS_REPORT = true;
+const USE_DUMMY_PROGRESS_REPORT = false;
 const USE_RANDOM_NPC_PROFILE_AVATAR = true;
 
 function assetUrl(path: string) {
@@ -748,8 +748,7 @@ function renderHub() {
         return;
       }
 
-      const latestCompleted = reports.find((r: any) => r && r.status === "COMPLETED" && r.report);
-      const latest = latestCompleted ?? reports[0];
+      const latest = reports[0];
 
       const reportsEl = appRoot.querySelector('[data-role="progress-user-reports"]') as HTMLSpanElement | null;
       if (reportsEl) reportsEl.textContent = String(reports.length);
