@@ -1,6 +1,7 @@
 import {
   Inject,
   Injectable,
+  NotFoundException,
   UnauthorizedException
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -28,7 +29,19 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<AuthResponseDto> {
-    return this.authenticateOrCreate(dto.email, dto.password);
+    const user = await this.usersRepository.findByEmail(dto.email);
+
+    if (!user) {
+      throw new NotFoundException("Account does not exist");
+    }
+
+    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException("Invalid email or password");
+    }
+
+    return this.buildAuthResponse(user.id, user.email, user.createdAt);
   }
 
   private async authenticateOrCreate(

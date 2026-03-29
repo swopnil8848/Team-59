@@ -393,14 +393,14 @@ export class Ui {
         ctx.fillText(
           "Press closer to talk...",
           stateVariables.windowWidth / 2 + 1,
-          stateVariables.windowHeight - 228 + 1
+          stateVariables.windowHeight - 280 + 1
         );
 
         ctx.fillStyle = "rgba(255,255,255,0.95)";
         ctx.fillText(
           "Press closer to talk...",
           stateVariables.windowWidth / 2,
-          stateVariables.windowHeight - 228
+          stateVariables.windowHeight - 280
         );
         ctx.restore();
       }
