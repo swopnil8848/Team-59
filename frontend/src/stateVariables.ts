@@ -115,11 +115,13 @@ export const stateVariables = {
   dialogueScrollY: 0,
   playerProfile: {
     name: "",
+    email: "",
     age: "",
     gender: "",
     environment: "",
   } as {
     name: string;
+    email: string;
     age: string;
     gender: string;
     environment: string;

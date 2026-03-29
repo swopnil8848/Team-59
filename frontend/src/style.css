@@ -298,6 +298,266 @@ body {
   margin-top: 10px;
 }
 
+.progress-user-card {
+  width: 100%;
+  padding: 18px 18px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.96);
+  border: 2px solid rgba(18, 18, 18, 0.18);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  min-height: 170px;
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.10),
+    0 12px 26px rgba(0, 0, 0, 0.08);
+}
+
+.progress-user-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(64% 80% at 22% 18%, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0) 62%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0) 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.progress-report-card,
+.progress-report-loading,
+.progress-report-empty {
+  background-image:
+    repeating-linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.03) 0px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(255, 255, 255, 0) 2px,
+      rgba(255, 255, 255, 0) 6px
+    );
+  background-blend-mode: multiply;
+}
+
+.progress-user-avatar {
+  width: 84px;
+  height: 140px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 2px solid rgba(18, 18, 18, 0.16);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 1;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55);
+}
+
+.progress-user-avatar img {
+  width: 70px;
+  height: 70px;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.progress-user-info {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.progress-user-name {
+  font-family: pixelgame, "Press Start 2P", monospace;
+  font-size: 40px;
+  line-height: 1.08;
+  color: #007c9d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progress-user-email {
+  font-family: vtfont, "Press Start 2P", monospace;
+  font-size: 20px;
+  line-height: 1.35;
+  color: rgba(0, 0, 0, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progress-user-meta {
+  margin-top: 2px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.progress-user-meta-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(241, 242, 249, 0.92);
+  border: 2px solid rgba(18, 18, 18, 0.10);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.progress-user-meta-item .label {
+  font-family: "Press Start 2P", monospace;
+  font-size: 9px;
+  color: rgba(0, 0, 0, 0.55);
+  letter-spacing: 0.6px;
+}
+
+.progress-user-meta-item .value {
+  font-family: "Press Start 2P", monospace;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+@media (max-width: 560px) {
+  .progress-user-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .progress-user-avatar {
+    width: 92px;
+    height: 92px;
+  }
+
+  .progress-user-avatar img {
+    width: 78px;
+    height: 78px;
+  }
+
+  .progress-user-name {
+    font-size: 44px;
+  }
+
+  .progress-user-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.progress-report-shell {
+  width: 100%;
+}
+
+.progress-report-loading,
+.progress-report-empty {
+  width: 100%;
+  padding: 18px 22px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.96);
+  border: 2px solid rgba(18, 18, 18, 0.18);
+  border-radius: 10px;
+  font-family: vtfont, "Press Start 2P", monospace;
+  font-size: 18px;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.72);
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.10),
+    0 12px 26px rgba(0, 0, 0, 0.08);
+}
+
+.progress-report-card {
+  width: 100%;
+  padding: 18px 22px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.96);
+  border: 2px solid rgba(18, 18, 18, 0.18);
+  border-radius: 10px;
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.10),
+    0 12px 26px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.progress-report-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.progress-report-stat {
+  background: rgba(241, 242, 249, 0.92);
+  border: 2px solid rgba(18, 18, 18, 0.14);
+  border-radius: 12px;
+  padding: 14px 12px;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.progress-report-stat-label {
+  font-family: "Press Start 2P", monospace;
+  font-size: 9px;
+  color: rgba(0, 0, 0, 0.58);
+  letter-spacing: 0.6px;
+}
+
+.progress-report-stat-value {
+  font-family: pixelgame, "Press Start 2P", monospace;
+  font-size: 36px;
+  color: #007c9d;
+  line-height: 1;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.08);
+}
+
+.progress-report-stat[data-metric="burnout"],
+.progress-report-stat[data-metric="stress"],
+.progress-report-stat[data-metric="uncertainty"] {
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-report-stat[data-metric="burnout"]::before,
+.progress-report-stat[data-metric="stress"]::before,
+.progress-report-stat[data-metric="uncertainty"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(60% 80% at 30% 20%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 62%);
+  pointer-events: none;
+}
+
+.progress-report-note {
+  font-family: vtfont, "Press Start 2P", monospace;
+  font-size: 18px;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.progress-report-section {
+  display: grid;
+  gap: 8px;
+}
+
+.progress-report-section-title {
+  font-family: "Press Start 2P", monospace;
+  font-size: 9px;
+  color: rgba(0, 0, 0, 0.62);
+  letter-spacing: 0.7px;
+}
+
+.progress-report-section-text {
+  font-family: vtfont, "Press Start 2P", monospace;
+  font-size: 18px;
+  line-height: 1.7;
+  color: rgba(0, 0, 0, 0.78);
+  white-space: pre-wrap;
+}
+
 .progress-box {
   width: 100%;
   padding: 18px 22px;

@@ -17,16 +17,48 @@ import { getAuthToken, setAuthToken, clearAuthToken } from "./api/client";
 import { AuthApi } from "./api/auth";
 import { UserApi } from "./api/user";
 import { GameApi } from "./api/game";
+import { ProgressReportsApi } from "./api/progressReports";
 import { logoutToLogin } from "./logout";
 
 type AvatarOption = {
   id: string;
   label: string;
   previewSrc: string;
+  gender?: "FEMALE" | "MALE" | "OTHER";
 };
 
+const USE_DUMMY_QUESTIONS = false;
+const USE_DUMMY_PROGRESS_REPORT = true;
+const USE_RANDOM_NPC_PROFILE_AVATAR = true;
+
+function assetUrl(path: string) {
+  const base = (import.meta as any)?.env?.BASE_URL ?? "/";
+  const normalizedBase = typeof base === "string" ? base : "/";
+  return `${normalizedBase}${String(path).replace(/^\//, "")}`;
+}
+
 function avatarFrontFrameSrc(avatarId: string, frameIndex1Based: number) {
-  return `/assets/character/images/characters/${avatarId}/front/front (${frameIndex1Based}).png`;
+  return assetUrl(
+    `/assets/character/images/characters/${avatarId}/front/front (${frameIndex1Based}).png`
+  );
+}
+
+function avatarDirectionalFrameSrc(
+  avatarId: string,
+  direction: "front" | "back" | "left" | "right",
+  frameIndex1Based: number
+) {
+  return assetUrl(
+    `/assets/character/images/characters/${avatarId}/${direction}/${direction} (${frameIndex1Based}).png`
+  );
+}
+
+function npcFrontFrameSrc(npcName: string, frameIndex1Based: number) {
+  // NPC assets live in /public/assets/npc/**, so they are served from /assets/npc/** at runtime.
+  // Encode path segments because NPC folders include spaces.
+  return assetUrl(
+    `/assets/npc/${encodeURIComponent(npcName)}/front/front(${frameIndex1Based}).png`
+  );
 }
 
 let avatarAnimTimer: number | null = null;
@@ -53,6 +85,7 @@ const avatars: AvatarOption[] = [
     id: "Ophelia",
     label: "Ophelia",
     previewSrc: avatarFrontFrameSrc("Ophelia", 1),
+    gender: "FEMALE",
   },
 ];
 
@@ -184,6 +217,35 @@ canvas.addEventListener("wheel", (e) => {
 let avatarIndex = 0;
 stateVariables.selectedAvatarId = avatars[avatarIndex]?.id ?? "Ophelia";
 
+function normalizeGender(value: string | null | undefined): "FEMALE" | "MALE" | "OTHER" | null {
+  if (!value) return null;
+  const v = String(value).trim().toLowerCase();
+  if (v === "female" || v === "f") return "FEMALE";
+  if (v === "male" || v === "m") return "MALE";
+  if (v === "other" || v === "nonbinary" || v === "non-binary") return "OTHER";
+  return null;
+}
+
+function hydrateAvatarSelectionFromProfile() {
+  const stored = window.localStorage.getItem("mindtrail:avatarId");
+  if (stored) {
+    const idx = avatars.findIndex((a) => a.id === stored);
+    if (idx >= 0) {
+      avatarIndex = idx;
+      stateVariables.selectedAvatarId = avatars[avatarIndex]?.id ?? stateVariables.selectedAvatarId;
+      return;
+    }
+  }
+
+  const g = normalizeGender(stateVariables.playerProfile.gender);
+  if (!g) return;
+  const idx = avatars.findIndex((a) => a.gender === g);
+  if (idx >= 0) {
+    avatarIndex = idx;
+    stateVariables.selectedAvatarId = avatars[avatarIndex]?.id ?? stateVariables.selectedAvatarId;
+  }
+}
+
 function renderLoader() {
   stopAvatarAnimation();
   canvas.style.display = "none";
@@ -222,6 +284,7 @@ function renderLoader() {
         const body = await withTimeout(UserApi.getMe(), 1200);
         if (body.success && body.data && body.data.user) {
           stateVariables.playerProfile.name = body.data.user.name || "";
+          stateVariables.playerProfile.email = body.data.user.email || "";
           stateVariables.playerProfile.age = body.data.user.age?.toString() || "";
           stateVariables.playerProfile.gender = body.data.user.gender || "";
           stateVariables.playerProfile.environment = body.data.user.environment || "";
@@ -276,6 +339,8 @@ function renderHub() {
   canvas.style.display = "none";
   appRoot.style.display = "block";
   appRoot.dataset.theme = "sky";
+
+  hydrateAvatarSelectionFromProfile();
 
   const avatar = avatars[avatarIndex] ?? avatars[0];
   const soundKey = "mindtrail:soundEnabled";
@@ -371,11 +436,30 @@ function renderHub() {
     childrenHtml: `
               <div class="modal-title">YOUR PROGRESS</div>
               <div class="modal-content hub-progress-content">
-                <div class="progress-box">TOTAL GAMES PLAYED: 12</div>
-                <div class="progress-box">TOTAL INTERACTION SCORE: 30</div>
+                <div class="progress-user-card">
+                  <div class="progress-user-avatar" aria-hidden="true">
+                    <img data-role="progress-user-avatar" alt="" src="${avatarFrontFrameSrc(avatar.id, 1)}" />
+                  </div>
+                  <div class="progress-user-info">
+                    <div class="progress-user-name" data-role="progress-user-name"></div>
+                    <div class="progress-user-email" data-role="progress-user-email"></div>
+                    <div class="progress-user-meta">
+                      <div class="progress-user-meta-item">
+                        <span class="label">AGE</span>
+                        <span class="value" data-role="progress-user-age">—</span>
+                      </div>
+                      <div class="progress-user-meta-item">
+                        <span class="label">REPORTS</span>
+                        <span class="value" data-role="progress-user-reports">—</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="progress-report-shell" data-role="hub-progress-shell">
+                  <div class="progress-report-loading" data-role="hub-progress-loading">Loading your report…</div>
+                </div>
                 <div class="progress-footer">
-                  <div>Thanks for playing!</div>
-                  <div>Hope you had a great time—see you again on the trail 🌿</div>
+                  <div>These insights update after you finish a session.</div>
                 </div>
               </div>
             `,
@@ -411,6 +495,7 @@ function renderHub() {
   const updateAvatar = () => {
     const next = avatars[avatarIndex] ?? avatars[0];
     stateVariables.selectedAvatarId = next.id;
+    window.localStorage.setItem("mindtrail:avatarId", next.id);
     const img = appRoot.querySelector('[data-role="hub-avatar-img"]') as HTMLImageElement | null;
     const name = appRoot.querySelector('[data-role="hub-avatar-name"]') as HTMLDivElement | null;
     if (img) img.src = next.previewSrc;
@@ -452,12 +537,292 @@ function renderHub() {
   const controlsPanel = appRoot.querySelector('[data-role="hub-controls-panel"]') as HTMLDivElement | null;
   const progressPanel = appRoot.querySelector('[data-role="hub-progress-panel"]') as HTMLDivElement | null;
 
+  const setProfileHeader = () => {
+    const nameEl = appRoot.querySelector('[data-role="progress-user-name"]') as HTMLDivElement | null;
+    const emailEl = appRoot.querySelector('[data-role="progress-user-email"]') as HTMLDivElement | null;
+    const ageEl = appRoot.querySelector('[data-role="progress-user-age"]') as HTMLSpanElement | null;
+    if (nameEl) nameEl.textContent = stateVariables.playerProfile.name || "Traveler";
+    if (emailEl) emailEl.textContent = stateVariables.playerProfile.email || "—";
+    if (ageEl) ageEl.textContent = stateVariables.playerProfile.age || "—";
+  };
+
+  type ParsedWellbeingReport = {
+    burnout?: string;
+    stress?: string;
+    uncertainty?: string;
+    analysis?: string;
+    feedback?: string;
+  };
+
+  const parseWellbeingReport = (raw: unknown): ParsedWellbeingReport & { rawText?: string } => {
+    const coerce = (value: any) => (typeof value === "string" ? value : undefined);
+
+    const fromObject = (obj: any): ParsedWellbeingReport => {
+      if (!obj || typeof obj !== "object") return {};
+      if (obj.report && typeof obj.report === "object") {
+        return {
+          burnout: coerce(obj.report.burnout),
+          stress: coerce(obj.report.stress),
+          uncertainty: coerce(obj.report.uncertainty),
+          analysis: coerce(obj.report.analysis),
+          feedback: coerce(obj.feedback),
+        };
+      }
+      return {
+        burnout: coerce(obj.burnout),
+        stress: coerce(obj.stress),
+        uncertainty: coerce(obj.uncertainty),
+        analysis: coerce(obj.analysis),
+        feedback: coerce(obj.feedback),
+      };
+    };
+
+    if (typeof raw === "string") {
+      const trimmed = raw.trim();
+      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          return { ...fromObject(parsed) };
+        } catch {
+          return { rawText: raw };
+        }
+      }
+      return { rawText: raw };
+    }
+
+    return fromObject(raw);
+  };
+
+  const escapeHtml = (value: string) =>
+    value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+  let progressFetchInFlight = false;
+  const renderProgressInto = (shell: HTMLElement, html: string) => {
+    shell.innerHTML = html;
+  };
+
+  const renderProgressEmpty = (shell: HTMLElement, message: string) => {
+    renderProgressInto(
+      shell,
+      `<div class="progress-report-empty">${escapeHtml(message)}</div>`
+    );
+  };
+
+  const renderProgressReportCard = (
+    shell: HTMLElement,
+    progressReport: any
+  ) => {
+    const status = typeof progressReport?.status === "string" ? progressReport.status : "UNKNOWN";
+
+    const parsed = parseWellbeingReport(progressReport?.report);
+    const burnout = parsed.burnout ?? "—";
+    const stress = parsed.stress ?? "—";
+    const uncertainty = parsed.uncertainty ?? "—";
+    const analysis = parsed.analysis ?? parsed.rawText ?? "";
+    const feedback =
+      (typeof progressReport?.feedback === "string" && progressReport.feedback.trim().length > 0
+        ? progressReport.feedback.trim()
+        : parsed.feedback) ?? "";
+
+    const hasAnalysis = typeof analysis === "string" && analysis.trim().length > 0;
+    const hasFeedback = typeof feedback === "string" && feedback.trim().length > 0;
+
+    renderProgressInto(
+      shell,
+      `
+        <div class="progress-report-card">
+          <div class="progress-report-stats">
+            <div class="progress-report-stat" data-metric="burnout">
+              <div class="progress-report-stat-label">BURNOUT</div>
+              <div class="progress-report-stat-value">${escapeHtml(burnout)}</div>
+            </div>
+            <div class="progress-report-stat" data-metric="stress">
+              <div class="progress-report-stat-label">STRESS</div>
+              <div class="progress-report-stat-value">${escapeHtml(stress)}</div>
+            </div>
+            <div class="progress-report-stat" data-metric="uncertainty">
+              <div class="progress-report-stat-label">UNCERTAINTY</div>
+              <div class="progress-report-stat-value">${escapeHtml(uncertainty)}</div>
+            </div>
+          </div>
+
+          ${
+            status === "PENDING" && !hasAnalysis && !hasFeedback
+              ? `<div class="progress-report-note">Your latest report is generating. Check back in a bit.</div>`
+              : ""
+          }
+
+          ${
+            hasAnalysis
+              ? `
+                <div class="progress-report-section">
+                  <div class="progress-report-section-title">ANALYSIS</div>
+                  <div class="progress-report-section-text">${escapeHtml(analysis)}</div>
+                </div>
+              `
+              : ""
+          }
+
+          ${
+            hasFeedback
+              ? `
+                <div class="progress-report-section">
+                  <div class="progress-report-section-title">FEEDBACK</div>
+                  <div class="progress-report-section-text">${escapeHtml(feedback)}</div>
+                </div>
+              `
+              : ""
+          }
+        </div>
+      `
+    );
+  };
+
+  const loadLatestProgressReport = async () => {
+    if (progressFetchInFlight) return;
+    progressFetchInFlight = true;
+    try {
+      const shell = appRoot.querySelector('[data-role="hub-progress-shell"]') as HTMLDivElement | null;
+      if (!shell) return;
+      renderProgressInto(shell, `<div class="progress-report-loading">Loading your report…</div>`);
+
+      if (USE_DUMMY_PROGRESS_REPORT) {
+        const reportsEl = appRoot.querySelector('[data-role="progress-user-reports"]') as HTMLSpanElement | null;
+        if (reportsEl) reportsEl.textContent = "1";
+        renderProgressReportCard(shell, {
+          id: "progress-dummy",
+          status: "COMPLETED",
+          createdAt: new Date().toISOString(),
+          report: {
+            burnout: "Low",
+            stress: "Low",
+            uncertainty: "Low",
+            analysis:
+              "Your recent sessions indicate low burnout and stress, with a balanced focus on problem-solving and emotional regulation strategies. Some uncertainty and external attribution were noted, suggesting areas where clarity and personal agency could be enhanced.",
+          },
+          feedback:
+            "Consider expanding your problem-focused strategies to further tackle feelings of uncertainty. Engaging more actively with your support network may provide additional insights and comfort. Reflecting on your values can help find meaning in any challenges you face.",
+        });
+        return;
+      }
+
+      const body: any = await ProgressReportsApi.list();
+      const reports = body?.data?.progressReports;
+      if (!Array.isArray(reports) || reports.length === 0) {
+        const reportsEl = appRoot.querySelector('[data-role="progress-user-reports"]') as HTMLSpanElement | null;
+        if (reportsEl) reportsEl.textContent = "0";
+        renderProgressEmpty(shell, "No progress reports yet. Finish a session to generate one.");
+        return;
+      }
+
+      const latestCompleted = reports.find((r: any) => r && r.status === "COMPLETED" && r.report);
+      const latest = latestCompleted ?? reports[0];
+
+      const reportsEl = appRoot.querySelector('[data-role="progress-user-reports"]') as HTMLSpanElement | null;
+      if (reportsEl) reportsEl.textContent = String(reports.length);
+
+      renderProgressReportCard(shell, latest);
+    } catch (err: any) {
+      const shell = appRoot.querySelector('[data-role="hub-progress-shell"]') as HTMLDivElement | null;
+      if (!shell) return;
+      const msg = err instanceof Error ? err.message : "Failed to load progress reports.";
+      renderProgressEmpty(shell, msg);
+    } finally {
+      progressFetchInFlight = false;
+    }
+  };
+
+  let progressAvatarTimer: number | null = null;
+  let progressNpcName: string | null = null;
+  const stopProgressAvatarAnimation = () => {
+    if (progressAvatarTimer != null) {
+      window.clearInterval(progressAvatarTimer);
+      progressAvatarTimer = null;
+    }
+    const img = appRoot.querySelector('[data-role="progress-user-avatar"]') as HTMLImageElement | null;
+    if (img) img.style.transform = "";
+    progressNpcName = null;
+  };
+
+  const startProgressAvatarAnimation = () => {
+    stopProgressAvatarAnimation();
+    const img = appRoot.querySelector('[data-role="progress-user-avatar"]') as HTMLImageElement | null;
+    if (!img) return;
+
+    if (USE_RANDOM_NPC_PROFILE_AVATAR) {
+      const npcPool = Array.from({ length: 10 }, (_, i) => `Character ${i + 1}`);
+      const stored = window.localStorage.getItem("mindtrail:profileNpc");
+      const storedOk = stored && npcPool.includes(stored) ? stored : null;
+      progressNpcName =
+        progressNpcName ??
+        storedOk ??
+        (npcPool[Math.floor(Math.random() * npcPool.length)] ?? "Character 1");
+      if (progressNpcName) window.localStorage.setItem("mindtrail:profileNpc", progressNpcName);
+      const frames = [1, 2].map((i) => npcFrontFrameSrc(progressNpcName!, i));
+      let idx = 0;
+      img.style.transform = "";
+      img.onerror = () => {
+        // If the NPC asset path fails (usually base URL / deploy path issues), fallback to the player avatar.
+        const fallback = avatarFrontFrameSrc(avatars[avatarIndex]?.id ?? "Ophelia", 1);
+        img.src = fallback;
+      };
+      img.src = frames[0] ?? img.src;
+      progressAvatarTimer = window.setInterval(() => {
+        idx = (idx + 1) % frames.length;
+        img.src = frames[idx] ?? img.src;
+      }, 220);
+      return;
+    }
+
+    const avatarId = stateVariables.selectedAvatarId || (avatars[avatarIndex]?.id ?? "Ophelia");
+    const leftFrames = [1, 2, 3, 4].map((i) => avatarDirectionalFrameSrc(avatarId, "left", i));
+    const rightFrames = [1, 2, 3, 4].map((i) => avatarDirectionalFrameSrc(avatarId, "right", i));
+    let frameIdx = 0;
+    let x = 0;
+    let dir = 1; // 1 = right, -1 = left
+
+    const container = img.parentElement as HTMLElement | null;
+    const containerW = container?.clientWidth ?? 84;
+    const spriteW = img.clientWidth || 70;
+    const pad = 6;
+    const maxX = Math.max(0, containerW - spriteW - pad * 2);
+
+    img.style.transform = `translateX(${pad}px)`;
+    img.src = rightFrames[0] ?? img.src;
+    progressAvatarTimer = window.setInterval(() => {
+      x += dir * 3;
+      if (x <= 0) {
+        x = 0;
+        dir = 1;
+      } else if (x >= maxX) {
+        x = maxX;
+        dir = -1;
+      }
+
+      frameIdx = (frameIdx + 1) % 4;
+      img.src = (dir === 1 ? rightFrames : leftFrames)[frameIdx] ?? img.src;
+      img.style.transform = `translateX(${pad + x}px)`;
+    }, 120);
+  };
+
   const setPanelState = (state: "hub" | "about" | "controls" | "progress") => {
     if (!hubStage) return;
     hubStage.dataset.state = state;
     aboutPanel?.setAttribute("aria-hidden", state === "about" ? "false" : "true");
     controlsPanel?.setAttribute("aria-hidden", state === "controls" ? "false" : "true");
     progressPanel?.setAttribute("aria-hidden", state === "progress" ? "false" : "true");
+    if (state === "progress") {
+      setProfileHeader();
+      startProgressAvatarAnimation();
+      void loadLatestProgressReport();
+    } else {
+      stopProgressAvatarAnimation();
+    }
   };
 
   appRoot.querySelector('[data-action="hub-about"]')?.addEventListener("click", () => {
@@ -659,6 +1024,7 @@ function renderRegister() {
       if (token) {
         setAuthToken(token);
         stateVariables.playerProfile.name = name;
+        stateVariables.playerProfile.email = email;
         stateVariables.playerProfile.age = age;
         const profileData: any = {
           gender: stateVariables.playerProfile.gender,
@@ -697,6 +1063,7 @@ function renderRegister() {
       // Hackathon-friendly fallback: allow the user to continue even if backend is unreachable.
       console.error("Registration failed, continuing offline:", err);
       stateVariables.playerProfile.name = name;
+      stateVariables.playerProfile.email = email;
       stateVariables.playerProfile.age = age;
       setError(
         "api",
@@ -808,12 +1175,14 @@ function renderLogin() {
           const uBody = await UserApi.getMe();
           if (uBody.success && uBody.data?.user) {
             stateVariables.playerProfile.name = uBody.data.user.name || "";
+            stateVariables.playerProfile.email = uBody.data.user.email || "";
             stateVariables.playerProfile.age = uBody.data.user.age?.toString() || "";
             stateVariables.playerProfile.gender = uBody.data.user.gender || "";
             stateVariables.playerProfile.environment = uBody.data.user.environment || "";
           }
         } catch (profileErr) {
           console.error("Failed to fetch user profile", profileErr);
+          stateVariables.playerProfile.email = email;
         }
         // slide to hub
         slideTo(renderHub);
