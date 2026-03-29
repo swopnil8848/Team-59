@@ -27,7 +27,6 @@ type AvatarOption = {
   gender?: "FEMALE" | "MALE" | "OTHER";
 };
 
-const USE_DUMMY_QUESTIONS = false;
 const USE_DUMMY_PROGRESS_REPORT = true;
 const USE_RANDOM_NPC_PROFILE_AVATAR = true;
 
