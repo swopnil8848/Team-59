@@ -408,8 +408,9 @@ function renderHub() {
         mode: "hub",
         message: "Fullscreen is needed to start the game. Tap “Enter fullscreen” to continue.",
         enterLabel: "Enter fullscreen",
-        exitLabel: "",
+        exitLabel: "Exit game",
         onSuccess: () => slideTo(renderGameLoader),
+        onCancel: () => slideTo(renderHub),
       });
     })();
   });
@@ -1174,7 +1175,10 @@ function ensureFullscreenOrShowRequirementForGame() {
     mode: "game",
     message: "Fullscreen is required to play. Tap “Enter fullscreen” to continue.",
     enterLabel: "Enter fullscreen",
-    exitLabel: "",
+    exitLabel: "Exit game",
+    onCancel: () => {
+      void exitGameToHub();
+    },
   });
 }
 
