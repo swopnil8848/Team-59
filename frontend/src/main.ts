@@ -394,12 +394,26 @@ function renderHub() {
             <div class="modal hub">
               <div class="modal-inner">
                 <div class="modal-title">THE SPACE IS YOURS.</div>
+                <div class="hub-progress-mini hub-progress-mini--full" data-action="hub-progress" role="button" tabindex="0" aria-label="Open your progress">
+                  <div class="hub-progress-mini-stat">
+                    <div class="k">BURNOUT</div>
+                    <div class="v" data-role="hub-progress-mini-burnout">—</div>
+                  </div>
+                  <div class="hub-progress-mini-stat">
+                    <div class="k">STRESS</div>
+                    <div class="v" data-role="hub-progress-mini-stress">—</div>
+                  </div>
+                  <div class="hub-progress-mini-stat">
+                    <div class="k">UNCERTAINTY</div>
+                    <div class="v" data-role="hub-progress-mini-uncertainty">—</div>
+                  </div>
+                </div>
                 <div class="hub-grid modal-content">
                   <div>
                     <div class="hub-menu">
+                      <div class="hub-link" data-action="hub-progress"><span>YOUR PROGRESS</span><span class="arrow" aria-hidden="true">↗</span></div>
                       <div class="hub-link" data-action="hub-controls"><span>CONTROL</span><span class="arrow">↗</span></div>
                       <div class="hub-link" data-action="hub-about"><span>ABOUT US</span><span class="arrow">↗</span></div>
-                      <div class="hub-link" data-action="hub-progress"><span>YOUR PROGRESS</span><span class="arrow">↗</span></div>
                     </div>
                   </div>
                   <div class="hub-right">
@@ -711,6 +725,28 @@ function renderHub() {
     );
   };
 
+  const renderHubProgressSummary = (report: any) => {
+    const miniBurnout = appRoot.querySelector('[data-role="hub-progress-mini-burnout"]') as HTMLDivElement | null;
+    const miniStress = appRoot.querySelector('[data-role="hub-progress-mini-stress"]') as HTMLDivElement | null;
+    const miniUncertainty = appRoot.querySelector('[data-role="hub-progress-mini-uncertainty"]') as HTMLDivElement | null;
+
+    if (!report) {
+      if (miniBurnout) miniBurnout.textContent = "—";
+      if (miniStress) miniStress.textContent = "—";
+      if (miniUncertainty) miniUncertainty.textContent = "—";
+      return;
+    }
+
+    const parsed = parseWellbeingReport(report?.report);
+    const burnout = parsed.burnout ?? "—";
+    const stress = parsed.stress ?? "—";
+    const uncertainty = parsed.uncertainty ?? "—";
+
+    if (miniBurnout) miniBurnout.textContent = burnout;
+    if (miniStress) miniStress.textContent = stress;
+    if (miniUncertainty) miniUncertainty.textContent = uncertainty;
+  };
+
   const loadLatestProgressReport = async () => {
     if (progressFetchInFlight) return;
     progressFetchInFlight = true;
@@ -722,7 +758,7 @@ function renderHub() {
       if (USE_DUMMY_PROGRESS_REPORT) {
         const reportsEl = appRoot.querySelector('[data-role="progress-user-reports"]') as HTMLSpanElement | null;
         if (reportsEl) reportsEl.textContent = "1";
-        renderProgressReportCard(shell, {
+        const dummy = {
           id: "progress-dummy",
           status: "COMPLETED",
           createdAt: new Date().toISOString(),
@@ -735,7 +771,9 @@ function renderHub() {
           },
           feedback:
             "Consider expanding your problem-focused strategies to further tackle feelings of uncertainty. Engaging more actively with your support network may provide additional insights and comfort. Reflecting on your values can help find meaning in any challenges you face.",
-        });
+        };
+        renderProgressReportCard(shell, dummy);
+        renderHubProgressSummary(dummy);
         return;
       }
 
@@ -745,6 +783,7 @@ function renderHub() {
         const reportsEl = appRoot.querySelector('[data-role="progress-user-reports"]') as HTMLSpanElement | null;
         if (reportsEl) reportsEl.textContent = "0";
         renderProgressEmpty(shell, "No progress reports yet. Finish a session to generate one.");
+        renderHubProgressSummary(null);
         return;
       }
 
@@ -754,11 +793,13 @@ function renderHub() {
       if (reportsEl) reportsEl.textContent = String(reports.length);
 
       renderProgressReportCard(shell, latest);
+      renderHubProgressSummary(latest);
     } catch (err: any) {
       const shell = appRoot.querySelector('[data-role="hub-progress-shell"]') as HTMLDivElement | null;
       if (!shell) return;
       const msg = err instanceof Error ? err.message : "Failed to load progress reports.";
       renderProgressEmpty(shell, msg);
+      renderHubProgressSummary(null);
     } finally {
       progressFetchInFlight = false;
     }
@@ -852,14 +893,14 @@ function renderHub() {
     }
   };
 
-  appRoot.querySelector('[data-action="hub-about"]')?.addEventListener("click", () => {
-    setPanelState("about");
+  appRoot.querySelectorAll('[data-action="hub-about"]').forEach((el) => {
+    el.addEventListener("click", () => setPanelState("about"));
   });
-  appRoot.querySelector('[data-action="hub-controls"]')?.addEventListener("click", () => {
-    setPanelState("controls");
+  appRoot.querySelectorAll('[data-action="hub-controls"]').forEach((el) => {
+    el.addEventListener("click", () => setPanelState("controls"));
   });
-  appRoot.querySelector('[data-action="hub-progress"]')?.addEventListener("click", () => {
-    setPanelState("progress");
+  appRoot.querySelectorAll('[data-action="hub-progress"]').forEach((el) => {
+    el.addEventListener("click", () => setPanelState("progress"));
   });
   appRoot.querySelector('[data-action="hub-about-panel-close"]')?.addEventListener("click", () => {
     setPanelState("hub");
@@ -870,6 +911,9 @@ function renderHub() {
   appRoot.querySelector('[data-action="hub-progress-panel-close"]')?.addEventListener("click", () => {
     setPanelState("hub");
   });
+
+  // Populate the dashboard "YOUR PROGRESS" summary immediately.
+  void loadLatestProgressReport();
 }
 
 function renderRegister() {

@@ -647,6 +647,62 @@ body {
   margin-top: 12px;
 }
 
+.hub-progress-mini--full {
+  width: auto;
+  margin-top: 14px;
+  margin-bottom: 18px;
+  margin-left: 28px;
+  margin-right: 28px;
+}
+
+.hub-progress-mini--full .hub-progress-mini-stat .k,
+.hub-progress-mini--full .hub-progress-mini-stat .v {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-progress-mini {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px 12px;
+  background: rgba(0, 124, 157, 0.06);
+  border: 2px solid rgba(0, 124, 157, 0.16);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.hub-progress-mini-stat {
+  background: rgba(255, 255, 255, 0.7);
+  border: 2px solid rgba(18, 18, 18, 0.10);
+  border-radius: 12px;
+  padding: 10px 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.hub-progress-mini-stat .k {
+  font-family: "Press Start 2P", monospace;
+  font-size: 9px;
+  color: rgba(0, 0, 0, 0.55);
+  letter-spacing: 0.6px;
+}
+
+.hub-progress-mini-stat .v {
+  font-family: pixelgame, "Press Start 2P", monospace;
+  font-size: 22px;
+  color: #007c9d;
+  line-height: 1;
+}
+
+@media (max-width: 560px) {
+  .hub-progress-mini--full {
+    margin-left: 18px;
+    margin-right: 18px;
+  }
+}
+
 .hub-link {
   font-family: "Press Start 2P", monospace;
   font-size: 18px;
@@ -654,6 +710,25 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.hub-link--primary {
+  color: #007c9d;
+  background: rgba(0, 124, 157, 0.08);
+  border: 2px solid rgba(0, 124, 157, 0.22);
+  border-radius: 12px;
+  padding: 12px 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.hub-link--primary .arrow {
+  border: none;
+  background: transparent;
+  width: auto;
+  height: auto;
+  font-size: 24px;
+  color: #000;
+  line-height: 1;
 }
 
 .hub-link .arrow {
