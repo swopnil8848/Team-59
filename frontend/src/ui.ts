@@ -238,130 +238,137 @@ export class Ui {
   }
 
   renderNpcHint(ctx: CanvasRenderingContext2D = stateVariables.ctx) {
-    if (stateVariables.activeNpcIndex === -1) return;
-
     const now = Date.now();
-    const npc = stateVariables.npcs[stateVariables.activeNpcIndex];
-    const isThanking =
-      !!npc &&
-      stateVariables.dialogueThankYouNpcIndex === stateVariables.activeNpcIndex &&
-      stateVariables.dialogueThankYouStartedMs > 0;
 
-    if (isThanking) {
-      if (now < stateVariables.dialogueThankYouStartedMs) {
-        return;
-      }
-      const elapsed = now - stateVariables.dialogueThankYouStartedMs;
-      const durationMs = 1300;
-      if (elapsed >= durationMs) {
-        stateVariables.dialogueThankYouNpcIndex = -1;
-        stateVariables.dialogueThankYouStartedMs = 0;
-        stateVariables.dialogueThankYouOptionIndex = -1;
-        stateVariables.dialogueThankYouText = "";
-        return;
-      }
+    // 1. Handle "Thank you" feedback bubble if active
+    if (stateVariables.dialogueThankYouNpcIndex !== -1 && stateVariables.dialogueThankYouStartedMs > 0) {
+      const thankNpc = stateVariables.npcs[stateVariables.dialogueThankYouNpcIndex];
+      if (thankNpc) {
+        const elapsed = now - stateVariables.dialogueThankYouStartedMs;
+        const durationMs = 1300;
+        if (elapsed >= 0) {
+          if (elapsed >= durationMs) {
+            stateVariables.dialogueThankYouNpcIndex = -1;
+            stateVariables.dialogueThankYouStartedMs = 0;
+            stateVariables.dialogueThankYouOptionIndex = -1;
+            stateVariables.dialogueThankYouText = "";
+          } else {
+            const t = Math.max(0, Math.min(1, elapsed / durationMs));
+            const eased = this.easeOutCubic(t);
+            const alpha = 1 - t;
 
-      const t = Math.max(0, Math.min(1, elapsed / durationMs));
-      const eased = this.easeOutCubic(t);
-      const alpha = 1 - t;
+            const centerX = thankNpc.startPoint.x + thankNpc.currentWidth / 2;
+            const baseY = thankNpc.startPoint.y - 14;
+            const slideDownY = 20 * eased;
+            const bubbleY = baseY + slideDownY;
 
-      const centerX = npc.startPoint.x + npc.currentWidth / 2;
-      const baseY = npc.startPoint.y - 14;
-      const slideDownY = 20 * eased;
-      const bubbleY = baseY + slideDownY;
+            const text = stateVariables.dialogueThankYouText || "Thank you!";
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.font = "600 15px Outfit";
 
-      const text = stateVariables.dialogueThankYouText || "Thank you!";
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.font = "600 15px Outfit";
+            const maxBubbleW = 280;
+            const padX = 14;
+            const padY = 10;
+            const lineH = 18;
 
-      const maxBubbleW = 280;
-      const padX = 14;
-      const padY = 10;
-      const lineH = 18;
+            const words = text.split(/\s+/).filter(Boolean);
+            const lines: string[] = [];
+            let lineStr = "";
+            for (const word of words) {
+              const test = lineStr ? `${lineStr} ${word}` : word;
+              if (ctx.measureText(test).width > maxBubbleW - padX * 2 && lineStr) {
+                lines.push(lineStr);
+                lineStr = word;
+              } else {
+                lineStr = test;
+              }
+            }
+            if (lineStr) lines.push(lineStr);
 
-      const words = text.split(/\s+/).filter(Boolean);
-      const lines: string[] = [];
-      let line = "";
-      for (const word of words) {
-        const test = line ? `${line} ${word}` : word;
-        if (ctx.measureText(test).width > maxBubbleW - padX * 2 && line) {
-          lines.push(line);
-          line = word;
-        } else {
-          line = test;
+            const lineWidths = lines.map((l) => ctx.measureText(l).width);
+            const contentW = Math.min(
+              maxBubbleW - padX * 2,
+              Math.max(0, ...lineWidths)
+            );
+            const bubbleW = Math.max(120, Math.ceil(contentW + padX * 2));
+            const bubbleH = Math.max(34, Math.ceil(lines.length * lineH + padY * 2));
+
+            const bubbleTopY = bubbleY - bubbleH;
+            const bubbleX = centerX - bubbleW / 2;
+            const r = 10;
+
+            // Bubble background
+            ctx.fillStyle = "rgba(255,255,255,0.96)";
+            ctx.beginPath();
+            ctx.moveTo(bubbleX + r, bubbleTopY);
+            ctx.lineTo(bubbleX + bubbleW - r, bubbleTopY);
+            ctx.arcTo(bubbleX + bubbleW, bubbleTopY, bubbleX + bubbleW, bubbleTopY + r, r);
+            ctx.lineTo(bubbleX + bubbleW, bubbleTopY + bubbleH - r);
+            ctx.arcTo(
+              bubbleX + bubbleW,
+              bubbleTopY + bubbleH,
+              bubbleX + bubbleW - r,
+              bubbleTopY + bubbleH,
+              r
+            );
+            ctx.lineTo(bubbleX + r, bubbleTopY + bubbleH);
+            ctx.arcTo(bubbleX, bubbleTopY + bubbleH, bubbleX, bubbleTopY + bubbleH - r, r);
+            ctx.lineTo(bubbleX, bubbleTopY + r);
+            ctx.arcTo(bubbleX, bubbleTopY, bubbleX + r, bubbleTopY, r);
+            ctx.closePath();
+            ctx.fill();
+
+            // Text
+            ctx.fillStyle = "#09131a";
+            ctx.textAlign = "center";
+            const textCenterY = bubbleTopY + bubbleH / 2 - ((lines.length - 1) * lineH) / 2;
+            lines.forEach((l, i) => {
+              ctx.fillText(l, centerX, textCenterY + i * lineH + 5);
+            });
+
+            const pulseAlpha = Math.max(0, 0.32 - 0.32 * t);
+            ctx.globalAlpha = pulseAlpha;
+            ctx.strokeStyle = "rgba(139, 211, 255, 0.75)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(centerX, bubbleTopY + bubbleH / 2, 14 + 22 * eased, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.restore();
+            return; // Don't show "talk" hint while bubble is active
+          }
         }
       }
-      if (line) lines.push(line);
-
-      const lineWidths = lines.map((l) => ctx.measureText(l).width);
-      const contentW = Math.min(
-        maxBubbleW - padX * 2,
-        Math.max(0, ...lineWidths)
-      );
-      const bubbleW = Math.max(120, Math.ceil(contentW + padX * 2));
-      const bubbleH = Math.max(34, Math.ceil(lines.length * lineH + padY * 2));
-
-      const bubbleTopY = bubbleY - bubbleH;
-      const bubbleX = centerX - bubbleW / 2;
-      const r = 10;
-
-      // Bubble background
-      ctx.fillStyle = "rgba(255,255,255,0.96)";
-      ctx.beginPath();
-      ctx.moveTo(bubbleX + r, bubbleTopY);
-      ctx.lineTo(bubbleX + bubbleW - r, bubbleTopY);
-      ctx.arcTo(bubbleX + bubbleW, bubbleTopY, bubbleX + bubbleW, bubbleTopY + r, r);
-      ctx.lineTo(bubbleX + bubbleW, bubbleTopY + bubbleH - r);
-      ctx.arcTo(
-        bubbleX + bubbleW,
-        bubbleTopY + bubbleH,
-        bubbleX + bubbleW - r,
-        bubbleTopY + bubbleH,
-        r
-      );
-      ctx.lineTo(bubbleX + r, bubbleTopY + bubbleH);
-      ctx.arcTo(bubbleX, bubbleTopY + bubbleH, bubbleX, bubbleTopY + bubbleH - r, r);
-      ctx.lineTo(bubbleX, bubbleTopY + r);
-      ctx.arcTo(bubbleX, bubbleTopY, bubbleX + r, bubbleTopY, r);
-      ctx.closePath();
-      ctx.fill();
-
-      // Text
-      ctx.fillStyle = "#09131a";
-      ctx.textAlign = "center";
-      const textCenterY = bubbleTopY + bubbleH / 2 - ((lines.length - 1) * lineH) / 2;
-      lines.forEach((l, i) => {
-        ctx.fillText(l, centerX, textCenterY + i * lineH + 5);
-      });
-
-      const pulseAlpha = Math.max(0, 0.32 - 0.32 * t);
-      ctx.globalAlpha = pulseAlpha;
-      ctx.strokeStyle = "rgba(139, 211, 255, 0.75)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(centerX, bubbleTopY + bubbleH / 2, 14 + 22 * eased, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.restore();
-      return;
     }
 
-    ctx.save();
-    ctx.font = "18px Outfit";
-    ctx.textAlign = "center";
-    ctx.fillStyle = "rgba(255,255,255,0.95)";
-    ctx.fillText(
-      "Press closer to talk...",
-      stateVariables.windowWidth / 2,
-      stateVariables.windowHeight - 228
-    );
-    ctx.restore();
+    // handle "Press closer to talk" hint
+    if (stateVariables.activeNpcIndex !== -1) {
+      const npc = stateVariables.npcs[stateVariables.activeNpcIndex];
+      // Only show hint if player is near but NOT yet "at" the interaction threshold
+      if (npc && !npc.isPlayerAt()) {
+        ctx.save();
+        ctx.font = "18px Outfit";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(255,255,255,0.95)";
+        ctx.fillText(
+          "Press closer to talk...",
+          stateVariables.windowWidth / 2,
+          stateVariables.windowHeight - 228
+        );
+        ctx.restore();
+      }
+    }
   }
+
 
   renderDialogue(ctx: CanvasRenderingContext2D = stateVariables.ctx) {
     const now = Date.now();
-    const desiredNpcIndex = stateVariables.activeNpcIndex;
+    
+    // Only show dialogue if the active NPC is within the interaction threshold
+    const activeNpc = stateVariables.activeNpcIndex !== -1 ? stateVariables.npcs[stateVariables.activeNpcIndex] : null;
+    const isAtNpc = activeNpc && activeNpc.isPlayerAt();
+    const desiredNpcIndex = isAtNpc ? stateVariables.activeNpcIndex : -1;
 
     if (
       stateVariables.dialogueSuppressedNpcIndex !== -1 &&
@@ -439,10 +446,9 @@ export class Ui {
         if (stateVariables.dialogueForceCloseNpcIndex === dismissedNpcIndex) {
           stateVariables.dialogueForceCloseNpcIndex = -1;
         }
-
         if (stateVariables.dialogueThankYouPendingNpcIndex === dismissedNpcIndex) {
           stateVariables.dialogueThankYouNpcIndex = dismissedNpcIndex;
-          stateVariables.dialogueThankYouStartedMs = now + 4000;
+          stateVariables.dialogueThankYouStartedMs = now;
           stateVariables.dialogueThankYouOptionIndex =
             stateVariables.dialogueThankYouPendingOptionIndex;
           stateVariables.dialogueThankYouText = stateVariables.dialogueThankYouPendingText || "";
@@ -451,24 +457,24 @@ export class Ui {
           stateVariables.dialogueThankYouPendingText = "";
         }
       }
+    }
 
-      const shouldShowNow =
-        desiredNpcIndex !== -1 &&
-        desiredNpcIndex !== stateVariables.dialogueSuppressedNpcIndex;
+    const shouldShowNow =
+      desiredNpcIndex !== -1 &&
+      desiredNpcIndex !== stateVariables.dialogueSuppressedNpcIndex;
 
-      if (!shouldShowNow) {
-        stateVariables.dialoguePanelNpcIndex = -1;
-        stateVariables.dialogueLastNpcIndex = -1;
-        stateVariables.dialogueTargetText = "";
-        stateVariables.dialogueVisibleText = "";
-        stateVariables.dialogueOptionsRevealAtMs = 0;
-        stateVariables.dialogueHoveredOptionIndex = -1;
-        stateVariables.dialogueSelectedOptionIndex = -1;
-        stateVariables.dialogueSelectionStartedMs = 0;
-        stateVariables.dialogueSelectionNpcIndex = -1;
-        stateVariables.dialoguePanelRect.visible = false;
-        return;
-      }
+    if (!shouldShowNow) {
+      stateVariables.dialoguePanelNpcIndex = -1;
+      stateVariables.dialogueLastNpcIndex = -1;
+      stateVariables.dialogueTargetText = "";
+      stateVariables.dialogueVisibleText = "";
+      stateVariables.dialogueOptionsRevealAtMs = 0;
+      stateVariables.dialogueHoveredOptionIndex = -1;
+      stateVariables.dialogueSelectedOptionIndex = -1;
+      stateVariables.dialogueSelectionStartedMs = 0;
+      stateVariables.dialogueSelectionNpcIndex = -1;
+      stateVariables.dialoguePanelRect.visible = false;
+      return;
     }
 
     const shownNpcIndex =

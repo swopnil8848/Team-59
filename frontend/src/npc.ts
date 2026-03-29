@@ -1,3 +1,4 @@
+import { LANTERN_BRIGHTNESS_RADIUS } from "./constants";
 import { Point } from "./shapes/point";
 import { stateVariables } from "./stateVariables";
 import { distance } from "./utils/util";
@@ -77,7 +78,7 @@ export class NPC {
     ctx.restore();
   }
 
-  isPlayerNearby() {
+  getDistanceToPlayer() {
     const npcCenter = new Point(
       this.startPoint.x + this.currentWidth / 2,
       this.startPoint.y + this.currentHeight / 2
@@ -86,7 +87,17 @@ export class NPC {
       stateVariables.player.startPoint.x + 28,
       stateVariables.player.startPoint.y + 40
     );
+    return distance(npcCenter, playerCenter);
+  }
 
-    return distance(npcCenter, playerCenter) <= this.interactionRadius;
+  isPlayerNearby() {
+    // use the smaller of LANTERN_BRIGHTNESS_RADIUS or interactionRadius * 3
+    const effectiveRadius = Math.min(this.interactionRadius * 3, LANTERN_BRIGHTNESS_RADIUS);
+    return this.getDistanceToPlayer() <= effectiveRadius;
+  }
+
+  isPlayerAt() {
+    // radius for showing the actual dialogue panel
+    return this.getDistanceToPlayer() <= this.interactionRadius;
   }
 }
