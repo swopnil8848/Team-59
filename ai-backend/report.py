@@ -221,12 +221,12 @@ Return JSON only with fields: analysis, feedback.
     }
 
     try:
-        response = requests.post(
+        nestResponse = requests.post(
             "http://100.54.109.124/api/progress-reports/complete",
             json=result,
             timeout=60,)
-        print('status',response.status)
-        print('message',response.text)
+        print('status',nestResponse.status)
+        print('message',nestResponse.text)
     except requests.RequestException:
         pass
 
