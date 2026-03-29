@@ -42,7 +42,7 @@ export function showGameOverOverlay(params: {
   const suffixFn = (id: string, i: number) => (["Ophelia", "Noah"].includes(id) ? ` (${i})` : `(${i})`);
   const mascotFrames = [1, 2, 3, 4].map(
     (i) =>
-      `/assets/character/images/characters/${safeAvatarId}/front/front${suffixFn(safeAvatarId, i)}.png`
+      `${import.meta.env.BASE_URL}assets/character/images/characters/${safeAvatarId}/front/front${suffixFn(safeAvatarId, i)}.png`
   );
 
   appRoot.dataset.theme = "gameover";
