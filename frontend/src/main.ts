@@ -155,10 +155,8 @@ function renderHubModal({
 
 function updateMousePosition(e: PointerEvent) {
   const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  stateVariables.mouseX = (e.clientX - rect.left) * scaleX;
-  stateVariables.mouseY = (e.clientY - rect.top) * scaleY;
+  stateVariables.mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+  stateVariables.mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
 }
 
 canvas.addEventListener("pointermove", (e) => updateMousePosition(e));
@@ -1367,11 +1365,10 @@ function openGameOverOverlay() {
   stateVariables.gamePaused = true;
   stateVariables.gameOverShown = true;
 
-  const score = stateVariables.player?.score ?? 0;
   showGameOverOverlay({
     appRoot,
     canvas,
-    score,
+    score: stateVariables.player.score,
     interactions: stateVariables.interactions,
     avatarId: stateVariables.selectedAvatarId,
     onReplay: () => {
@@ -1390,111 +1387,96 @@ function openGameOverOverlay() {
 }
 
 function draw() {
-  if (stateVariables.gamePaused) {
-    return;
-  }
+  if (stateVariables.gamePaused) return;
 
-  // Safety check: ensure world objects are initialized before drawing
   if (!stateVariables.bgImage || !stateVariables.bgImage.show || !stateVariables.player || !stateVariables.player.show) {
     console.warn("Draw called before initialization finished, skipping frame.");
     requestAnimationFrame(draw);
     return;
   }
 
-  try {
-    adjustCanvasSize();
-    stateVariables.ctx.imageSmoothingEnabled = false;
+  adjustCanvasSize();
+  const ctx = stateVariables.ctx;
 
-    stateVariables.ctx.save();
-    const targetZoom = (stateVariables.isHoldingMeditationKey && stateVariables.meditationStart != null) ? 0.75 : 1.0;
-    stateVariables.meditationZoomLevel += (targetZoom - stateVariables.meditationZoomLevel) * 0.05;
+  // Original clear
+  ctx.clearRect(0, 0, stateVariables.windowWidth, stateVariables.windowHeight);
 
-    const cx = stateVariables.windowWidth / 2;
-    const cy = stateVariables.windowHeight / 2;
-    stateVariables.ctx.translate(cx, cy);
-    stateVariables.ctx.scale(stateVariables.meditationZoomLevel, stateVariables.meditationZoomLevel);
-    stateVariables.ctx.translate(-cx, -cy);
+  // Meditation zoom was original, but and it was applied to the whole context
+  ctx.save();
+  const targetZoom = (stateVariables.isHoldingMeditationKey && stateVariables.meditationStart != null) ? 0.75 : 1.0;
+  stateVariables.meditationZoomLevel += (targetZoom - stateVariables.meditationZoomLevel) * 0.05;
 
-    stateVariables.bgImage.show();
-    
-    // Visual debug to prove draw loop is active (will draw a tiny white pixel in corner)
-    stateVariables.ctx.fillStyle = "white";
-    stateVariables.ctx.fillRect(0, 0, 2, 2);
-    drawClickIndicator();
+  const cx = stateVariables.windowWidth / 2;
+  const cy = stateVariables.windowHeight / 2;
+  ctx.translate(cx, cy);
+  ctx.scale(stateVariables.meditationZoomLevel, stateVariables.meditationZoomLevel);
+  ctx.translate(-cx, -cy);
 
-    stateVariables.npcs.forEach((npc) => npc.show());
-    stateVariables.clockPickups.forEach((clock) => clock.show());
+  stateVariables.bgImage.show();
 
-    stateVariables.player.show();
-    stateVariables.bgImage.showDepth();
-    stateVariables.lantern.showLuminosity();
-    stateVariables.lantern.changeLuminosity();
+  // Debug bit
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, 2, 2);
 
-    stateVariables.ctx.restore();
+  stateVariables.player.show();
+  stateVariables.lantern.show();
 
-    handleOtherControls();
-    handleMovementControls();
+  stateVariables.npcs.forEach((npc) => npc.show());
+  stateVariables.clockPickups.forEach((pickup) => pickup.show());
 
-    const nearbyNpcIndex = stateVariables.npcs.findIndex((npc) => npc.isPlayerNearby());
-    stateVariables.activeNpcIndex = nearbyNpcIndex;
-    if (nearbyNpcIndex === -1) {
-      stateVariables.dialogueSuppressedNpcIndex = -1;
-      stateVariables.dialogueDismissNpcIndex = -1;
-      stateVariables.dialogueForceCloseNpcIndex = -1;
-      stateVariables.dialogueThankYouNpcIndex = -1;
-      stateVariables.dialogueThankYouStartedMs = 0;
-      stateVariables.dialogueThankYouOptionIndex = -1;
-      stateVariables.dialogueThankYouPendingNpcIndex = -1;
-      stateVariables.dialogueThankYouPendingOptionIndex = -1;
-    }
+  stateVariables.lantern.showLuminosity();
 
-    stateVariables.clockPickups = stateVariables.clockPickups.filter((clock) => {
-      if (clock.isCollected()) {
-        stateVariables.endTimeMs += 5000;
-        return false;
-      }
-      return true;
-    });
+  ctx.restore(); // END MEDITATION ZOOM
 
-    const remainingMs = stateVariables.endTimeMs - Date.now();
-    const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  // Render UI and Indicators in original physical space
+  stateVariables.ui.show();
+  drawChannelledAnimation();
+  drawClickIndicator();
+  drawCursorImage();
 
-    drawChannelledAnimation();
-    stateVariables.ui.renderTimer(remainingSeconds);
-    stateVariables.ui.renderStamina();
-    stateVariables.ui.renderScore();
-    stateVariables.ui.renderNpcHint();
-    stateVariables.ui.renderDialogue();
-    drawCursorImage();
-    stateVariables.mouseClicked = false;
+  handleOtherControls();
+  handleMovementControls();
 
-    if (remainingMs <= 0) {
-      stateVariables.gameState = GameState.finished;
-      if (stateVariables.currentSessionId) {
-        GameApi.updateSessionStatus(stateVariables.currentSessionId, "COMPLETED").catch(
-          (err) => console.error("Failed to end session:", err)
-        );
-      }
-    }
+  const nearbyNpcIndex = stateVariables.npcs.findIndex((npc) => npc.isPlayerNearby());
+  stateVariables.activeNpcIndex = nearbyNpcIndex;
 
-    if (stateVariables.gameState === GameState.finished) {
-      if (!stateVariables.gameOverShown) {
-        openGameOverOverlay();
-      }
-      return;
-    }
-
-    requestAnimationFrame(draw);
-  } catch (err: any) {
-    console.error("CRITICAL DRAW ERROR:", err);
-    stateVariables.gamePaused = true;
-    appRoot.style.display = "block";
-    appRoot.innerHTML = `<div style="color:white; background:rgba(0,0,0,0.85); padding: 40px; text-align:center; position:fixed; inset:0; z-index:9999;">
-      <h2>Game Error</h2>
-      <p style="color:#ff6b6b;">${err.message}</p>
-      <button onclick="location.reload()" class="primary-btn">Restart Game</button>
-    </div>`;
+  if (nearbyNpcIndex === -1) {
+    stateVariables.dialogueSuppressedNpcIndex = -1;
+    stateVariables.dialogueDismissNpcIndex = -1;
+    stateVariables.dialogueForceCloseNpcIndex = -1;
+    stateVariables.dialogueThankYouNpcIndex = -1;
+    stateVariables.dialogueThankYouStartedMs = 0;
+    stateVariables.dialogueThankYouOptionIndex = -1;
+    stateVariables.dialogueThankYouPendingNpcIndex = -1;
+    stateVariables.dialogueThankYouPendingOptionIndex = -1;
   }
+
+  stateVariables.clockPickups = stateVariables.clockPickups.filter((clock) => {
+    if (clock.isCollected()) {
+      stateVariables.endTimeMs += 5000;
+      return false;
+    }
+    return true;
+  });
+
+  const remainingMs = stateVariables.endTimeMs - Date.now();
+  if (remainingMs <= 0) {
+    stateVariables.gameState = GameState.finished;
+    if (!USE_DUMMY_QUESTIONS && stateVariables.currentSessionId) {
+      GameApi.updateSessionStatus(stateVariables.currentSessionId, "COMPLETED")
+        .catch((err) => console.error("Failed to end session:", err));
+    }
+  }
+
+  if (stateVariables.gameState === GameState.finished) {
+    if (!stateVariables.gameOverShown) {
+      openGameOverOverlay();
+    }
+    return;
+  }
+
+  stateVariables.mouseClicked = false;
+  requestAnimationFrame(draw);
 }
 
 renderLoader();

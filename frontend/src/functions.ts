@@ -23,13 +23,8 @@ export function adjustCanvasSize() {
   if (stateVariables.player && stateVariables.player.startPoint && stateVariables.lantern) {
     const dx = (stateVariables.windowWidth - oldWidth) / 2;
     const dy = (stateVariables.windowHeight - oldHeight) / 2;
-    
-    if (dx !== 0 || dy !== 0) {
-      stateVariables.player.startPoint.x += dx;
-      stateVariables.player.startPoint.y += dy;
-      stateVariables.lantern.x += dx;
-      stateVariables.lantern.y += dy;
-    }
+    stateVariables.player.startPoint.x += dx;
+    stateVariables.player.startPoint.y += dy;
   }
 }
 

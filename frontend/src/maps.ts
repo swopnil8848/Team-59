@@ -61,12 +61,6 @@ export class Maps {
   }
 
   show(ctx: CanvasRenderingContext2D = stateVariables.ctx) {
-    ctx.save();
-    ctx.resetTransform();
-    ctx.clearRect(0, 0, stateVariables.windowWidth, stateVariables.windowHeight);
-    ctx.fillStyle = "#181425";
-    ctx.fillRect(0, 0, stateVariables.windowWidth, stateVariables.windowHeight);
-    ctx.restore();
 
     this.checkEvents();
 
@@ -107,12 +101,15 @@ export class Maps {
   }
 
   checkEvents(x: number = this.startPoint.x, y: number = this.startPoint.y) {
+    const normX = x - (stateVariables.windowWidth - 1536) / 2;
+    const normY = y - (stateVariables.windowHeight - 753) / 2;
+
     this.mapData[this.name].events["doors"].map((event: any) => {
       if (
-        x - stateVariables.adjustDeviceColliderX < event.x &&
-        x - stateVariables.adjustDeviceColliderX > event.w &&
-        y - stateVariables.adjustDeviceColliderY < event.y &&
-        y - stateVariables.adjustDeviceColliderY > event.h
+        normX - stateVariables.adjustDeviceColliderX < event.x &&
+        normX - stateVariables.adjustDeviceColliderX > event.w &&
+        normY - stateVariables.adjustDeviceColliderY < event.y &&
+        normY - stateVariables.adjustDeviceColliderY > event.h
       ) {
         this.startPoint.x = event.next_cor.x;
         this.startPoint.y = event.next_cor.y;
@@ -131,26 +128,30 @@ export class Maps {
     let mapHeight = this.mapData[this.name].size === "native" ? (this.img.naturalHeight || this.img.height) : this.mapData[this.name].size.height;
 
     if (mapWidth > 0 && mapHeight > 0) {
-      let pX = stateVariables.player.startPoint.x - x;
-      let pY = stateVariables.player.startPoint.y - y;
+      const pX = stateVariables.player.startPoint.x - x;
+      const pY = stateVariables.player.startPoint.y - y;
 
       if (pX < 0 || pX > mapWidth || pY < 0 || pY > mapHeight) {
         return true;
       }
-    }
 
-    let collidersLength = this.mapData[this.name].colliders.length;
-    for (let i = 0; i < collidersLength; i++) {
-      let collider = this.mapData[this.name].colliders[i];
-      if (!stateVariables.debugCollider) {
-        if (
-          x - stateVariables.adjustDeviceColliderX < collider.x &&
-          x - stateVariables.adjustDeviceColliderX > collider.w &&
-          y - stateVariables.adjustDeviceColliderY < collider.y &&
-          y - stateVariables.adjustDeviceColliderY > collider.h
-        ) {
-          has_collided = true;
-          break;
+      // Normalize world-to-screen mapping
+      const normX = x - (stateVariables.windowWidth - 1536) / 2;
+      const normY = y - (stateVariables.windowHeight - 753) / 2;
+
+      let collidersLength = this.mapData[this.name].colliders.length;
+      for (let i = 0; i < collidersLength; i++) {
+        let collider = this.mapData[this.name].colliders[i];
+        if (!stateVariables.debugCollider) {
+          if (
+            normX - stateVariables.adjustDeviceColliderX < collider.x &&
+            normX - stateVariables.adjustDeviceColliderX > collider.w &&
+            normY - stateVariables.adjustDeviceColliderY < collider.y &&
+            normY - stateVariables.adjustDeviceColliderY > collider.h
+          ) {
+            has_collided = true;
+            break;
+          }
         }
       }
     }

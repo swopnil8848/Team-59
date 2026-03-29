@@ -1002,6 +1002,17 @@ export class Ui {
     ctx.restore();
   }
 
+  show(ctx: CanvasRenderingContext2D = stateVariables.ctx) {
+    const remainingMs = stateVariables.endTimeMs - Date.now();
+    const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+    
+    this.renderScore(ctx);
+    this.renderStamina(ctx);
+    this.renderTimer(remainingSeconds, ctx);
+    this.renderNpcHint(ctx);
+    this.renderDialogue(ctx);
+  }
+
   measureWrappedText(
     text: string,
     maxWidth: number,
