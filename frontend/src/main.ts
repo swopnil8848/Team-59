@@ -37,8 +37,9 @@ function assetUrl(path: string) {
 }
 
 function avatarFrontFrameSrc(avatarId: string, frameIndex1Based: number) {
+  const suffix = ["Ophelia", "Noah"].includes(avatarId) ? ` (${frameIndex1Based})` : `(${frameIndex1Based})`;
   return assetUrl(
-    `/assets/character/images/characters/${avatarId}/front/front (${frameIndex1Based}).png`
+    `/assets/character/images/characters/${avatarId}/front/front${suffix}.png`
   );
 }
 
@@ -47,8 +48,9 @@ function avatarDirectionalFrameSrc(
   direction: "front" | "back" | "left" | "right",
   frameIndex1Based: number
 ) {
+  const suffix = ["Ophelia", "Noah"].includes(avatarId) ? ` (${frameIndex1Based})` : `(${frameIndex1Based})`;
   return assetUrl(
-    `/assets/character/images/characters/${avatarId}/${direction}/${direction} (${frameIndex1Based}).png`
+    `/assets/character/images/characters/${avatarId}/${direction}/${direction}${suffix}.png`
   );
 }
 
@@ -85,6 +87,24 @@ const avatars: AvatarOption[] = [
     label: "Ophelia",
     previewSrc: avatarFrontFrameSrc("Ophelia", 1),
     gender: "FEMALE",
+  },
+  {
+    id: "Jess",
+    label: "Jess",
+    previewSrc: avatarFrontFrameSrc("Jess", 1),
+    gender: "FEMALE",
+  },
+  {
+    id: "Rizu",
+    label: "Rizu",
+    previewSrc: avatarFrontFrameSrc("Rizu", 1),
+    gender: "FEMALE",
+  },
+  {
+    id: "Noah",
+    label: "Noah",
+    previewSrc: avatarFrontFrameSrc("Noah", 1),
+    gender: "MALE",
   },
 ];
 
@@ -386,7 +406,7 @@ function renderHub() {
                     <div class="avatar-label">CHOOSE YOUR AVATAR</div>
                     <div class="hub-avatar-row">
                       <button class="hub-avatar-arrow" type="button" data-action="avatar-prev" ${avatars.length <= 1 ? "disabled" : ""}>&lsaquo;</button>
-                      <div class="hub-avatar">
+                      <div class="hub-avatar" data-avatar="${avatar.id}">
                         <img alt="Avatar" data-role="hub-avatar-img" src="${avatar.previewSrc}" />
                       </div>
                       <button class="hub-avatar-arrow" type="button" data-action="avatar-next" ${avatars.length <= 1 ? "disabled" : ""}>&rsaquo;</button>
@@ -436,7 +456,7 @@ function renderHub() {
               <div class="modal-title">YOUR PROGRESS</div>
               <div class="modal-content hub-progress-content">
                 <div class="progress-user-card">
-                  <div class="progress-user-avatar" aria-hidden="true">
+                  <div class="progress-user-avatar" data-avatar="${avatar.id}" aria-hidden="true">
                     <img data-role="progress-user-avatar" alt="" src="${avatarFrontFrameSrc(avatar.id, 1)}" />
                   </div>
                   <div class="progress-user-info">
@@ -495,10 +515,19 @@ function renderHub() {
     const next = avatars[avatarIndex] ?? avatars[0];
     stateVariables.selectedAvatarId = next.id;
     window.localStorage.setItem("mindtrail:avatarId", next.id);
+
     const img = appRoot.querySelector('[data-role="hub-avatar-img"]') as HTMLImageElement | null;
     const name = appRoot.querySelector('[data-role="hub-avatar-name"]') as HTMLDivElement | null;
+    const progressImg = appRoot.querySelector('[data-role="progress-user-avatar"]') as HTMLImageElement | null;
+
+    const container = appRoot.querySelector('.hub-avatar') as HTMLDivElement | null;
+    const progressContainer = appRoot.querySelector('.progress-user-avatar') as HTMLDivElement | null;
+
     if (img) img.src = next.previewSrc;
     if (name) name.textContent = next.label;
+    if (progressImg) progressImg.src = avatarFrontFrameSrc(next.id, 1);
+    if (container) container.dataset.avatar = next.id;
+    if (progressContainer) progressContainer.dataset.avatar = next.id;
     if (img) startAvatarAnimation(img, next.id);
   };
 

@@ -342,8 +342,8 @@ body {
 }
 
 .progress-user-avatar {
-  width: 84px;
-  height: 140px;
+  width: 140px;
+  height: 200px;
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.04);
   border: 2px solid rgba(18, 18, 18, 0.16);
@@ -356,8 +356,9 @@ body {
 }
 
 .progress-user-avatar img {
-  width: 70px;
-  height: 70px;
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
   display: block;
   image-rendering: pixelated;
 }
@@ -695,14 +696,16 @@ body {
 }
 
 .hub-avatar {
-  width: 72px;
-  height: 72px;
+  width: 140px;
+  height: 140px;
   display: grid;
   place-items: center;
 }
 
 .hub-avatar img {
-  width: 56px;
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
   image-rendering: pixelated;
 }
 
@@ -2417,8 +2420,8 @@ canvas {
   left: -24px;
   transform: translateY(-50%) rotate(-5deg);
   z-index: 2;
-  width: 80px;
-  height: 80px;
+  width: 140px;
+  height: 140px;
   background: #fff;
   border: 4px solid #6c8cd5;
   border-radius: 12px;
@@ -2428,12 +2431,11 @@ canvas {
   justify-content: center;
 }
 
-
-
 .cute-mascot img {
-  width: 56px;
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
   image-rendering: pixelated;
-  transform: translateY(-2px) scale(1.1);
 }
 
 @media (max-width: 640px) {

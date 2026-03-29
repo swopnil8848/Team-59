@@ -39,9 +39,10 @@ export function showGameOverOverlay(params: {
   }));
 
   const safeAvatarId = (avatarId ?? "Ophelia").replace(/[^A-Za-z0-9_-]/g, "");
+  const suffixFn = (id: string, i: number) => (["Ophelia", "Noah"].includes(id) ? ` (${i})` : `(${i})`);
   const mascotFrames = [1, 2, 3, 4].map(
     (i) =>
-      `/assets/character/images/characters/${safeAvatarId}/front/front (${i}).png`
+      `/assets/character/images/characters/${safeAvatarId}/front/front${suffixFn(safeAvatarId, i)}.png`
   );
 
   appRoot.dataset.theme = "gameover";
@@ -78,7 +79,7 @@ export function showGameOverOverlay(params: {
           <button class="cute-btn cute-btn--primary" type="button" data-action="go-replay">Play Again</button>
         </div>
 
-        <div class="cute-mascot" aria-hidden="true">
+        <div class="cute-mascot" data-avatar="${safeAvatarId}" aria-hidden="true">
           <img data-role="go-mascot" alt="" src="${mascotFrames[0] ?? ""}" />
         </div>
       </div>

@@ -60,7 +60,9 @@ export function loadCharacterImages(
   const imagesArray = [] as HTMLImageElement[];
   for (let i = 1; i <= no_of_frames; i++) {
     const img = new Image();
-    img.src = `${path}/${direction}/${direction} (${i}).png`;
+    const hasSpace = path.includes("Ophelia") || path.includes("Noah");
+    const suffix = hasSpace ? ` (${i})` : `(${i})`;
+    img.src = `${path}/${direction}/${direction}${suffix}.png`;
     img.onload = upCounter;
     imagesArray.push(img);
   }
