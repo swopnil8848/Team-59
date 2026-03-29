@@ -13,32 +13,74 @@ export type NpcDialogue = {
 
 export class NPC {
   startPoint: Point;
-  sprite: HTMLCanvasElement;
+  sprites: HTMLCanvasElement[];
   dialogue: NpcDialogue;
-  w: number;
-  h: number;
   interactionRadius: number;
+  frameToShow: number;
+  frameTime: number;
+  collected: boolean;
 
-  constructor(x: number, y: number, sprite: HTMLCanvasElement, dialogue: NpcDialogue) {
+  constructor(x: number, y: number, sprites: HTMLCanvasElement[], dialogue: NpcDialogue) {
     this.startPoint = new Point(x, y);
-    this.sprite = sprite;
+    this.sprites = sprites;
     this.dialogue = dialogue;
-    this.w = 58;
-    this.h = 82;
     this.interactionRadius = 92;
+    this.frameToShow = 0;
+    this.frameTime = 24; // Slow animation for idling NPCs
+    this.collected = false;
+  }
+
+  get currentWidth() {
+    return this.sprites[0]?.width || 58;
+  }
+
+  get currentHeight() {
+    return this.sprites[0]?.height || 82;
+  }
+
+  checkCollision(offsetX: number, offsetY: number) {
+    if (this.collected) return false;
+    const nextCenterX = this.startPoint.x + offsetX + this.currentWidth / 2;
+    const nextCenterY = this.startPoint.y + offsetY + this.currentHeight / 2;
+    const playerCenterX = stateVariables.player.startPoint.x + 28;
+    const playerCenterY = stateVariables.player.startPoint.y + 40;
+    const dx = nextCenterX - playerCenterX;
+    const dy = nextCenterY - playerCenterY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return dist < this.currentWidth / 2 + 10;
   }
 
   show(ctx: CanvasRenderingContext2D = stateVariables.ctx) {
+    const isInteracting =
+      stateVariables.dialoguePanelNpcIndex !== -1 &&
+      stateVariables.npcs[stateVariables.dialoguePanelNpcIndex] === this &&
+      stateVariables.dialoguePanelAnim > 0;
+
+    if (isInteracting) {
+      this.frameToShow = 0; // dont move and show first frame during dialogue
+    } else {
+      this.frameToShow++;
+      if (this.frameToShow >= this.sprites.length * this.frameTime) {
+        this.frameToShow = 0;
+      }
+    }
+
+    const frameIdx = Math.floor(this.frameToShow / this.frameTime);
+    const sprite = this.sprites[frameIdx] || this.sprites[0];
+
+    if (!sprite) return;
+
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(this.sprite, this.startPoint.x, this.startPoint.y, this.w, this.h);
+    // draw using natural sprite dimensions, matching character.ts
+    ctx.drawImage(sprite, this.startPoint.x, this.startPoint.y);
     ctx.restore();
   }
 
   isPlayerNearby() {
     const npcCenter = new Point(
-      this.startPoint.x + this.w / 2,
-      this.startPoint.y + this.h / 2
+      this.startPoint.x + this.currentWidth / 2,
+      this.startPoint.y + this.currentHeight / 2
     );
     const playerCenter = new Point(
       stateVariables.player.startPoint.x + 28,

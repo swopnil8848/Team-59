@@ -58,6 +58,12 @@ DATABASE_URL=postgresql://postgres:your_password_here@localhost:5432/us_nep_hack
 JWT_SECRET=replace-this-with-a-long-random-secret
 JWT_EXPIRES_IN=7d
 FRONTEND_ORIGIN=http://localhost:5173
+AI_BACKEND_URL=http://13.220.64.204
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6378
+REDIS_PASSWORD=
+REDIS_PREFETCH_LOCK_TTL_SECONDS=120
+REDIS_PREFETCH_BACKFILL_INTERVAL_MS=60000
 ```
 
 ## 5. Understand each `.env` value
@@ -114,6 +120,44 @@ my-super-long-local-development-secret-key-12345
 ```text
 http://localhost:5173
 ```
+
+`AI_BACKEND_URL`
+
+- This is the third-party question-generation service used for game sessions.
+- Keep the current backend integration URL unless you are intentionally changing that service.
+
+`REDIS_HOST`
+
+- Redis host for question prefetch caching.
+- For local development, keep:
+
+```text
+127.0.0.1
+```
+
+`REDIS_PORT`
+
+- Redis port for question prefetch caching.
+- Local default for this project is:
+
+```text
+6378
+```
+
+`REDIS_PASSWORD`
+
+- Leave this blank for local Redis if authentication is disabled.
+- If your Redis instance requires auth, put the password here.
+
+`REDIS_PREFETCH_LOCK_TTL_SECONDS`
+
+- Short lock TTL used to prevent duplicate concurrent prefetch jobs.
+- `120` is a good local default.
+
+`REDIS_PREFETCH_BACKFILL_INTERVAL_MS`
+
+- Interval for the safety-net backfill loop.
+- `60000` means the backfill runs every 1 minute.
 
 ## 6. Create the PostgreSQL database
 
@@ -346,6 +390,9 @@ Cause:
   - `JWT_SECRET`
   - `JWT_EXPIRES_IN`
   - `FRONTEND_ORIGIN`
+  - `AI_BACKEND_URL`
+  - `REDIS_HOST`
+  - `REDIS_PORT`
 
 Fix:
 

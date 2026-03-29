@@ -81,27 +81,57 @@ export class Character {
       return;
     }
 
-    if (
-      !stateVariables.bgImage.checkCollision(
-        stateVariables.bgImage.startPoint.x + this.movement_speed * this.dirX,
-        stateVariables.bgImage.startPoint.y + this.movement_speed * this.dirY
-      )
-    ) {
-      stateVariables.bgImage.startPoint.x += this.movement_speed * this.dirX;
-      stateVariables.bgImage.startPoint.y += this.movement_speed * this.dirY;
+    const speed = this.movement_speed;
 
-      stateVariables.npcs.forEach((npc) => {
-        npc.startPoint.x += this.movement_speed * this.dirX;
-        npc.startPoint.y += this.movement_speed * this.dirY;
-      });
+    const checkNpcCollision = (offsetX: number, offsetY: number) => {
+      for (const npc of stateVariables.npcs) {
+        if (npc.checkCollision(offsetX, offsetY)) return true;
+      }
+      return false;
+    };
 
-      stateVariables.clockPickups.forEach((clock) => {
-        clock.startPoint.x += this.movement_speed * this.dirX;
-        clock.startPoint.y += this.movement_speed * this.dirY;
-      });
+    let moved = false;
 
+    // Try horizontal movement
+    if (this.dirX !== 0) {
+      const canMoveX = !stateVariables.bgImage.checkCollision(
+        stateVariables.bgImage.startPoint.x + speed * this.dirX,
+        stateVariables.bgImage.startPoint.y
+      ) && !checkNpcCollision(speed * this.dirX, 0);
+
+      if (canMoveX) {
+        stateVariables.bgImage.startPoint.x += speed * this.dirX;
+        stateVariables.npcs.forEach((npc) => (npc.startPoint.x += speed * this.dirX));
+        stateVariables.clockPickups.forEach(
+          (clock) => (clock.startPoint.x += speed * this.dirX)
+        );
+        moved = true;
+      }
+    }
+
+    // Try vertical movement
+    if (this.dirY !== 0) {
+      const canMoveY = !stateVariables.bgImage.checkCollision(
+        stateVariables.bgImage.startPoint.x,
+        stateVariables.bgImage.startPoint.y + speed * this.dirY
+      ) && !checkNpcCollision(0, speed * this.dirY);
+
+      if (canMoveY) {
+        stateVariables.bgImage.startPoint.y += speed * this.dirY;
+        stateVariables.npcs.forEach((npc) => (npc.startPoint.y += speed * this.dirY));
+        stateVariables.clockPickups.forEach(
+          (clock) => (clock.startPoint.y += speed * this.dirY)
+        );
+        moved = true;
+      }
+    }
+
+    if (moved) {
       this.isWalking = true;
       this.change_frames();
+    } else {
+      this.isWalking = false;
+      this.frameToShow = 0;
     }
   }
 }

@@ -1,13 +1,12 @@
 import {
   BadRequestException,
-  BadGatewayException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException
 } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { Prisma, GameQuestion, GameQuestionAnswer, GameSession } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { QuestionGenerationService } from "../question-prefetch/question-generation.service";
+import { QuestionPrefetchService } from "../question-prefetch/question-prefetch.service";
 import { AnswerGameQuestionDto } from "./dto/answer-game-question.dto";
 import {
   AnswerGameQuestionResponseDto,
@@ -18,6 +17,11 @@ import {
 } from "./dto/game-session-response.dto";
 import { GameQuestionStatusEnum } from "./enums/game-question-status.enum";
 import { GameSessionStatusEnum } from "./enums/game-session-status.enum";
+import {
+  EligibleUserQuestionProfile,
+  GeneratedQuestionPayload,
+  GeneratedQuestionSet
+} from "../question-prefetch/interfaces/generated-question-set.interface";
 
 type GameQuestionWithAnswers = GameQuestion & {
   outsider: boolean;
@@ -29,105 +33,33 @@ type GameQuestionWithAnswers = GameQuestion & {
   >;
 };
 
-type GameSessionWithQuestions = GameSession & {
-  questions: GameQuestionWithAnswers[];
-};
-
-type GeneratedQuestionPayload = {
-  order: number;
-  outsider: boolean;
-  questionText: string;
-  explanation: string | null;
-  answers: Array<{
-    text: string;
-    correct: boolean;
-    feedback: string | null;
-  }>;
-};
-
 @Injectable()
 export class GameSessionsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService
+    private readonly questionGenerationService: QuestionGenerationService,
+    private readonly questionPrefetchService: QuestionPrefetchService
   ) {}
 
   async createSession(userId: string): Promise<CreateGameSessionResponseDto> {
-    const user = (await this.prisma.user.findUnique({
-      where: { id: userId }
-    })) as {
-      id: string;
-      email: string;
-      gender: string | null;
-      age: number | null;
-      environment: string | null;
-    } | null;
+    const userProfile = await this.getEligibleUserProfile(userId);
+    const prefetchedQuestionSet =
+      await this.questionPrefetchService.consumePrefetchedQuestions(userId);
+    const generatedQuestionSet =
+      prefetchedQuestionSet ??
+      (await this.questionGenerationService.generateQuestionsForProfile(userProfile));
 
-    if (!user) {
-      throw new NotFoundException("User not found");
+    const savedSession = await this.createDbSessionFromQuestionSet(
+      userId,
+      userProfile,
+      generatedQuestionSet
+    );
+
+    if (prefetchedQuestionSet) {
+      await this.questionPrefetchService.deletePrefetchedQuestions(userId);
     }
 
-    const resolvedUserProfile = {
-      gender: user.gender,
-      age: user.age,
-      environment: user.environment
-    };
-
-    if (!resolvedUserProfile.gender || !resolvedUserProfile.age || !resolvedUserProfile.environment) {
-      throw new BadRequestException(
-        "gender, age, and environment are required to start a game session"
-      );
-    }
-
-    const generationContext = this.buildGenerationContext({
-      gender: resolvedUserProfile.gender,
-      age: resolvedUserProfile.age,
-      environment: resolvedUserProfile.environment
-    });
-
-    const generatedQuestionSet = await this.generateQuestionsFromApi({
-      gender: resolvedUserProfile.gender,
-      age: resolvedUserProfile.age,
-      environment: resolvedUserProfile.environment
-    });
-
-    const savedSession = await this.prisma.gameSession.create({
-      data: {
-        userId,
-        status: GameSessionStatusEnum.IN_PROGRESS,
-        generationContext: {
-          ...(generationContext as Record<string, string | number>),
-          questionSetId: generatedQuestionSet.questionSetId
-        } satisfies Prisma.InputJsonValue,
-        totalQuestions: generatedQuestionSet.questions.length,
-        questions: {
-          create: generatedQuestionSet.questions.map((question) => ({
-            order: question.order,
-            outsider: question.outsider,
-            questionText: question.questionText,
-            status: GameQuestionStatusEnum.PENDING,
-            explanation: question.explanation,
-            answers: {
-              create: question.answers.map((answer) => ({
-                answerText: answer.text,
-                isCorrect: answer.correct,
-                feedback: answer.feedback
-              }))
-            }
-          })) as any
-        }
-      },
-      include: {
-        questions: {
-          orderBy: { order: "asc" },
-          include: {
-            answers: {
-              orderBy: { createdAt: "asc" }
-            }
-          }
-        }
-      }
-    });
+    await this.questionPrefetchService.enqueueQuestionPrefetch(userId);
 
     return {
       session: this.toGameSessionSummaryDto(savedSession),
@@ -263,6 +195,8 @@ export class GameSessionsService {
       });
     });
 
+    await this.questionPrefetchService.enqueueQuestionPrefetch(userId);
+
     const updatedSession = await this.prisma.gameSession.findUnique({
       where: {
         id: sessionId
@@ -305,143 +239,82 @@ export class GameSessionsService {
     };
   }
 
-  private buildGenerationContext(input: {
-    gender: string;
-    age: number;
-    environment: string;
-  }) {
-    return {
-      gender: input.gender,
-      age: input.age,
-      environment: input.environment
-    } satisfies Prisma.InputJsonValue;
-  }
-
-  private async generateQuestionsFromApi(input: {
-    gender: string;
-    age: number;
-    environment: string;
-  }): Promise<{
-    questionSetId: string | null;
-    questions: GeneratedQuestionPayload[];
-  }> {
-    const baseUrl = this.configService.get<string>("integrations.aiBackendUrl");
-
-    if (!baseUrl) {
-      throw new InternalServerErrorException(
-        "AI_BACKEND_URL is not configured for game session generation"
-      );
-    }
-
-    let response: Response;
-
-    try {
-      response = await fetch(`${baseUrl.replace(/\/$/, "")}/npc-questions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(input)
-      });
-    } catch {
-      throw new BadGatewayException("Could not reach the NPC question generation service");
-    }
-
-    if (!response.ok) {
-      throw new BadGatewayException(
-        `NPC question generation failed with status ${response.status}`
-      );
-    }
-
-    let payload: unknown;
-
-    try {
-      payload = await response.json();
-    } catch {
-      throw new BadGatewayException("NPC question generation returned invalid JSON");
-    }
-
-    return this.normalizeGeneratedQuestions(payload);
-  }
-
-  private normalizeGeneratedQuestions(payload: unknown): {
-    questionSetId: string | null;
-    questions: GeneratedQuestionPayload[];
-  } {
-    if (!payload || typeof payload !== "object" || !("questions" in payload)) {
-      throw new BadGatewayException("NPC question generation returned an invalid payload");
-    }
-
-    const parsedPayload = payload as {
-      questionSetId?: unknown;
-      questions: unknown;
-    };
-    const questionSetId =
-      typeof parsedPayload.questionSetId === "string" ? parsedPayload.questionSetId : null;
-    const rawQuestions = parsedPayload.questions;
-
-    if (!Array.isArray(rawQuestions) || rawQuestions.length === 0) {
-      throw new BadGatewayException("NPC question generation returned no questions");
-    }
-
-    const questions = rawQuestions.map((question, index) => {
-      if (!question || typeof question !== "object") {
-        throw new BadGatewayException("NPC question generation returned a malformed question");
+  private async getEligibleUserProfile(
+    userId: string
+  ): Promise<Omit<EligibleUserQuestionProfile, "id">> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        gender: true,
+        age: true,
+        environment: true
       }
-
-      const questionText = question.question;
-      const outsider = question.outsider;
-      const rawAnswers = question.answers;
-
-      if (typeof questionText !== "string" || questionText.trim().length === 0) {
-        throw new BadGatewayException("NPC question generation returned a question without text");
-      }
-
-      if (typeof outsider !== "boolean") {
-        throw new BadGatewayException(
-          "NPC question generation returned a question without outsider state"
-        );
-      }
-
-      if (!Array.isArray(rawAnswers) || rawAnswers.length === 0) {
-        throw new BadGatewayException("NPC question generation returned a question without answers");
-      }
-
-      const answers = rawAnswers.map((answer) => {
-        if (!answer || typeof answer !== "object") {
-          throw new BadGatewayException("NPC question generation returned a malformed answer");
-        }
-
-        if (typeof answer.text !== "string" || answer.text.trim().length === 0) {
-          throw new BadGatewayException("NPC question generation returned an answer without text");
-        }
-
-        if (typeof answer.correct !== "boolean") {
-          throw new BadGatewayException(
-            "NPC question generation returned an answer without correctness"
-          );
-        }
-
-        return {
-          text: answer.text.trim(),
-          correct: answer.correct,
-          feedback: typeof answer.feedback === "string" ? answer.feedback.trim() : null
-        };
-      });
-
-      return {
-        order: index + 1,
-        outsider,
-        questionText: questionText.trim(),
-        explanation: null,
-        answers
-      };
     });
 
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    if (!user.gender || !user.age || !user.environment) {
+      throw new BadRequestException(
+        "gender, age, and environment are required to start a game session"
+      );
+    }
+
     return {
-      questionSetId,
-      questions
+      gender: user.gender,
+      age: user.age,
+      environment: user.environment
     };
+  }
+
+  private async createDbSessionFromQuestionSet(
+    userId: string,
+    userProfile: Omit<EligibleUserQuestionProfile, "id">,
+    generatedQuestionSet: GeneratedQuestionSet
+  ) {
+    const generationContext = this.questionGenerationService.buildGenerationContext({
+      ...userProfile
+    });
+
+    return this.prisma.gameSession.create({
+      data: {
+        userId,
+        status: GameSessionStatusEnum.IN_PROGRESS,
+        generationContext: {
+          ...(generationContext as Record<string, string | number>),
+          questionSetId: generatedQuestionSet.questionSetId
+        } satisfies Prisma.InputJsonValue,
+        totalQuestions: generatedQuestionSet.questions.length,
+        questions: {
+          create: generatedQuestionSet.questions.map((question: GeneratedQuestionPayload) => ({
+            order: question.order,
+            outsider: question.outsider,
+            questionText: question.questionText,
+            status: GameQuestionStatusEnum.PENDING,
+            explanation: question.explanation,
+            answers: {
+              create: question.answers.map((answer) => ({
+                answerText: answer.text,
+                isCorrect: answer.correct,
+                feedback: answer.feedback
+              }))
+            }
+          })) as any
+        }
+      },
+      include: {
+        questions: {
+          orderBy: { order: "asc" },
+          include: {
+            answers: {
+              orderBy: { createdAt: "asc" }
+            }
+          }
+        }
+      }
+    });
   }
 
   private toGameSessionSummaryDto(session: GameSession): GameSessionSummaryDto {

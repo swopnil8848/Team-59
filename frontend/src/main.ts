@@ -17,6 +17,7 @@ import { getAuthToken, setAuthToken, clearAuthToken } from "./api/client";
 import { AuthApi } from "./api/auth";
 import { UserApi } from "./api/user";
 import { GameApi } from "./api/game";
+import { logoutToLogin } from "./logout";
 
 type AvatarOption = {
   id: string;
@@ -255,9 +256,20 @@ function renderHub() {
 
   appRoot.innerHTML = `
     <div class="onboard onboard--popin">
-      <div class="sound">
-        <div>Sound</div>
-        <button class="switch" type="button" data-role="sound-switch" data-on="${stateVariables.soundEnabled ? "true" : "false"}"></button>
+      <div class="hub-top-right">
+        <div class="sound">
+          <div>Sound</div>
+          <button class="switch" type="button" data-role="sound-switch" data-on="${stateVariables.soundEnabled ? "true" : "false"}"></button>
+        </div>
+        <div class="hub-logout">
+          <button class="primary-btn hub-logout-btn" type="button" data-action="hub-logout" title="Logout" aria-label="Logout">
+            <svg class="hub-logout-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+              <path d="M10 17l1.41-1.41L8.83 13H20v-2H8.83l2.58-2.59L10 7l-7 7 7 7z" />
+              <path d="M4 4h8V2H4c-1.1 0-2 .9-2 2v6h2V4zm0 16h8v-2H4v-6H2v6c0 1.1.9 2 2 2z" />
+            </svg>
+            <span>LOGOUT</span>
+          </button>
+        </div>
       </div>
       <div class="onboard-bg"></div>
       <div class="onboard-content onboard-content--center">
@@ -348,6 +360,19 @@ function renderHub() {
     if (soundSwitch) soundSwitch.dataset.on = stateVariables.soundEnabled ? "true" : "false";
   });
 
+  appRoot.querySelector('[data-action="hub-logout"]')?.addEventListener("click", () => {
+    void logoutToLogin({
+      canvas,
+      exitFullscreenBestEffort,
+      stopSessionBestEffort,
+      resetGameState,
+      navigateToLogin: () => {
+        clearAuthToken();
+        slideTo(renderLogin);
+      },
+    });
+  });
+
   const hubAvatarImg = appRoot.querySelector('[data-role="hub-avatar-img"]') as HTMLImageElement | null;
   if (hubAvatarImg) startAvatarAnimation(hubAvatarImg, avatar.id);
 
@@ -371,7 +396,23 @@ function renderHub() {
   });
 
   appRoot.querySelector('[data-action="hub-enter"]')?.addEventListener("click", () => {
-    slideTo(renderGameLoader);
+    void (async () => {
+      // Call fullscreen inside a user gesture (this click) so browsers allow it.
+      await enterFullscreenBestEffort();
+      if (getFullscreenElement()) {
+        slideTo(renderGameLoader);
+        return;
+      }
+
+      showFullscreenRequiredOverlay({
+        mode: "hub",
+        message: "Fullscreen is needed to start the game. Tap “Enter fullscreen” to continue.",
+        enterLabel: "Enter fullscreen",
+        exitLabel: "Exit game",
+        onSuccess: () => slideTo(renderGameLoader),
+        onCancel: () => slideTo(renderHub),
+      });
+    })();
   });
 
   const hubStage = appRoot.querySelector('[data-state]') as HTMLDivElement | null;
@@ -878,29 +919,412 @@ function startGame() {
   canvas.style.display = "block";
   canvas.style.zIndex = "100"; // Force above everything else
   
-  stateVariables.gamePaused = false;
+  // Strict fullscreen: do not start gameplay unless fullscreen is active.
+  stateVariables.gamePaused = true;
+  pauseGameTimerIfRunning();
   stateVariables.gameOverShown = false;
   stateVariables.gameState = GameState.running;
 
-  // Final check to ensure canvas is ready
-  adjustCanvasSize();
+  void (async () => {
+    await enterFullscreenBestEffort();
+    if (!getFullscreenElement()) {
+      showFullscreenRequiredOverlay({
+        mode: "game",
+        message: "Fullscreen is required to play. Tap “Enter fullscreen” to continue.",
+        enterLabel: "Enter fullscreen",
+        exitLabel: "Exit game",
+        onSuccess: () => startGame(),
+        onCancel: () => {
+          void exitGameToHub();
+        },
+      });
+      return;
+    }
 
+    stateVariables.gamePaused = false;
+    resumeGameTimerIfPaused();
+    // Final check to ensure canvas is ready
+    adjustCanvasSize();
+
+    try {
+      initializeGame(stateVariables.gameQuestions);
+      // Render the first frame immediately so we don't show a black canvas.
+      draw();
+    } catch (err: any) {
+      console.error("Game initialization failed:", err);
+      appRoot.style.display = "block";
+      appRoot.innerHTML = `<div style="color:white; background:rgba(20,10,30,0.95); padding: 40px; text-align:center; position:fixed; inset:0; z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; font-family:sans-serif;">
+        <h2 style="color:#ff6b6b; margin-bottom:10px;">Game Critical Error</h2>
+        <p style="background:rgba(255,0,0,0.05); padding:15px; border-radius:8px; border:1px solid rgba(255,0,0,0.3); max-width:600px; text-align:left; font-family:monospace; margin:20px 0; overflow:auto; max-height:300px;">
+          <strong>Error:</strong> ${err.message}<br/><br/>
+          <span style="font-size:11px; opacity:0.6; white-space:pre-wrap;">${err.stack || "No stack trace available"}</span>
+        </p>
+        <button onclick="location.reload()" style="background:#007c9d; color:white; border:none; padding:12px 24px; border-radius:5px; cursor:pointer; font-weight:bold; font-size:16px;">Restart Application</button>
+      </div>`;
+    }
+  })();
+
+}
+
+async function enterFullscreenBestEffort() {
   try {
-    initializeGame(stateVariables.gameQuestions);
-    requestAnimationFrame(draw);
-  } catch (err: any) {
-    console.error("Game initialization failed:", err);
-    appRoot.style.display = "block";
-    appRoot.innerHTML = `<div style="color:white; background:rgba(20,10,30,0.95); padding: 40px; text-align:center; position:fixed; inset:0; z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; font-family:sans-serif;">
-      <h2 style="color:#ff6b6b; margin-bottom:10px;">Game Critical Error</h2>
-      <p style="background:rgba(255,0,0,0.05); padding:15px; border-radius:8px; border:1px solid rgba(255,0,0,0.3); max-width:600px; text-align:left; font-family:monospace; margin:20px 0; overflow:auto; max-height:300px;">
-        <strong>Error:</strong> ${err.message}<br/><br/>
-        <span style="font-size:11px; opacity:0.6; white-space:pre-wrap;">${err.stack || "No stack trace available"}</span>
-      </p>
-      <button onclick="location.reload()" style="background:#007c9d; color:white; border:none; padding:12px 24px; border-radius:5px; cursor:pointer; font-weight:bold; font-size:16px;">Restart Application</button>
-    </div>`;
+    if (getFullscreenElement()) return;
+    const root = document.documentElement as any;
+    const maybePromise =
+      root.requestFullscreen?.({ navigationUI: "hide" }) ??
+      root.requestFullscreen?.() ??
+      root.webkitRequestFullscreen?.();
+    if (maybePromise && typeof maybePromise.then === "function") {
+      await maybePromise;
+    }
+  } catch {
+    // Best-effort; ignore if blocked (e.g., not a user gesture).
   }
 }
+
+async function exitFullscreenBestEffort() {
+  try {
+    if (!getFullscreenElement()) return;
+    const doc = document as any;
+    const maybePromise = doc.exitFullscreen?.() ?? doc.webkitExitFullscreen?.();
+    if (maybePromise && typeof maybePromise.then === "function") {
+      await maybePromise;
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function getFullscreenElement(): Element | null {
+  return (
+    document.fullscreenElement ??
+    ((document as any).webkitFullscreenElement as Element | null) ??
+    null
+  );
+}
+
+function pauseGameTimerIfRunning() {
+  if (!stateVariables.endTimeMs) return;
+  if (stateVariables.timerPausedAtMs != null) return;
+  stateVariables.timerPausedAtMs = Date.now();
+}
+
+function resumeGameTimerIfPaused() {
+  if (!stateVariables.endTimeMs) return;
+  if (stateVariables.timerPausedAtMs == null) return;
+  const pausedForMs = Date.now() - stateVariables.timerPausedAtMs;
+  stateVariables.endTimeMs += pausedForMs;
+  stateVariables.timerPausedAtMs = null;
+}
+
+let fullscreenRequiredOverlay: HTMLDivElement | null = null;
+let fullscreenGateOpen = false;
+let fullscreenOverlayMode: "game" | "hub" = "game";
+let fullscreenOverlayOnSuccess: (() => void) | null = null;
+let fullscreenOverlayOnCancel: (() => void) | null = null;
+function getOrCreateFullscreenRequiredOverlay() {
+  if (fullscreenRequiredOverlay) return fullscreenRequiredOverlay;
+
+  const overlay = document.createElement("div");
+  overlay.id = "fullscreen-required-overlay";
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.zIndex = "100000";
+  overlay.style.display = "none";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.background = "rgba(10, 10, 20, 0.85)";
+  overlay.style.backdropFilter = "blur(6px)";
+
+  const panel = document.createElement("div");
+  panel.style.width = "min(520px, 92vw)";
+  panel.style.padding = "20px";
+  panel.style.borderRadius = "12px";
+  panel.style.border = "1px solid rgba(255,255,255,0.18)";
+  panel.style.background = "rgba(25, 20, 40, 0.9)";
+  panel.style.color = "white";
+  panel.style.fontFamily = "system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+
+  const title = document.createElement("div");
+  title.textContent = "Fullscreen needed";
+  title.style.fontSize = "18px";
+  title.style.fontWeight = "700";
+  title.style.marginBottom = "8px";
+
+  const message = document.createElement("div");
+  message.id = "fullscreen-required-message";
+  message.textContent = "This game works best in fullscreen. Tap “Enter fullscreen” to continue.";
+  message.style.opacity = "0.9";
+  message.style.marginBottom = "14px";
+  message.style.lineHeight = "1.35";
+
+  const actions = document.createElement("div");
+  actions.style.display = "flex";
+  actions.style.gap = "10px";
+  actions.style.justifyContent = "flex-end";
+
+  const enterBtn = document.createElement("button");
+  enterBtn.type = "button";
+  enterBtn.textContent = "Enter fullscreen";
+  enterBtn.dataset.role = "fullscreen-enter";
+  enterBtn.style.background = "#007c9d";
+  enterBtn.style.color = "white";
+  enterBtn.style.border = "none";
+  enterBtn.style.padding = "10px 14px";
+  enterBtn.style.borderRadius = "8px";
+  enterBtn.style.cursor = "pointer";
+  enterBtn.style.fontWeight = "700";
+
+  const exitBtn = document.createElement("button");
+  exitBtn.type = "button";
+  exitBtn.textContent = "Exit game";
+  exitBtn.dataset.role = "fullscreen-exit";
+  exitBtn.style.background = "rgba(255,255,255,0.08)";
+  exitBtn.style.color = "white";
+  exitBtn.style.border = "1px solid rgba(255,255,255,0.18)";
+  exitBtn.style.padding = "10px 14px";
+  exitBtn.style.borderRadius = "8px";
+  exitBtn.style.cursor = "pointer";
+
+  enterBtn.addEventListener("click", async () => {
+    const msgEl = overlay.querySelector("#fullscreen-required-message") as HTMLDivElement | null;
+    msgEl && (msgEl.textContent = "Requesting fullscreen…");
+
+    await enterFullscreenBestEffort();
+
+    // Give the browser a moment to update fullscreen state.
+    setTimeout(() => {
+      if (getFullscreenElement()) {
+        overlay.style.display = "none";
+        fullscreenGateOpen = false;
+        if (fullscreenOverlayOnSuccess) {
+          fullscreenOverlayOnSuccess();
+          return;
+        }
+        if (fullscreenOverlayMode === "game") {
+          stateVariables.gamePaused = false;
+          resumeGameTimerIfPaused();
+          requestAnimationFrame(draw);
+        }
+        return;
+      }
+      if (msgEl) {
+        msgEl.textContent =
+          "Fullscreen is required to play. Please allow fullscreen, then tap “Enter fullscreen” again.";
+      }
+    }, 150);
+  });
+
+  exitBtn.addEventListener("click", () => {
+    overlay.style.display = "none";
+    fullscreenGateOpen = false;
+    if (fullscreenOverlayOnCancel) {
+      fullscreenOverlayOnCancel();
+    } else if (fullscreenOverlayMode === "game") {
+      void exitGameToHub();
+    }
+  });
+
+  actions.append(exitBtn, enterBtn);
+  panel.append(title, message, actions);
+  overlay.append(panel);
+  document.body.append(overlay);
+
+  fullscreenRequiredOverlay = overlay;
+  return overlay;
+}
+
+function showFullscreenRequiredOverlay(opts: {
+  mode: "game" | "hub";
+  message: string;
+  exitLabel: string;
+  enterLabel: string;
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}) {
+  if (getFullscreenElement()) return;
+  if (fullscreenGateOpen) return;
+
+  fullscreenOverlayMode = opts.mode;
+  fullscreenOverlayOnSuccess = opts.onSuccess ?? null;
+  fullscreenOverlayOnCancel = opts.onCancel ?? null;
+
+  fullscreenGateOpen = true;
+  if (opts.mode === "game") {
+    stateVariables.gamePaused = true;
+    pauseGameTimerIfRunning();
+  }
+
+  const overlay = getOrCreateFullscreenRequiredOverlay();
+  const enterBtn = overlay.querySelector('[data-role="fullscreen-enter"]') as HTMLButtonElement | null;
+  const exitBtn = overlay.querySelector('[data-role="fullscreen-exit"]') as HTMLButtonElement | null;
+  const msgEl = overlay.querySelector("#fullscreen-required-message") as HTMLDivElement | null;
+  if (enterBtn) enterBtn.textContent = opts.enterLabel;
+  if (exitBtn) {
+    exitBtn.textContent = opts.exitLabel;
+    exitBtn.style.display = opts.exitLabel ? "" : "none";
+  }
+  if (msgEl) msgEl.textContent = opts.message;
+  overlay.style.display = "flex";
+}
+
+function ensureFullscreenOrShowRequirementForGame() {
+  if (!isGameVisible()) return;
+  if (stateVariables.gameOverShown) return;
+  showFullscreenRequiredOverlay({
+    mode: "game",
+    message: "Fullscreen is required to play. Tap “Enter fullscreen” to continue.",
+    enterLabel: "Enter fullscreen",
+    exitLabel: "Exit game",
+    onCancel: () => {
+      void exitGameToHub();
+    },
+  });
+}
+
+let visibilityExitPromptPending = false;
+function isGameVisible() {
+  return window.getComputedStyle(canvas).display !== "none";
+}
+
+function resetGameState() {
+  stateVariables.gamePaused = true;
+  stateVariables.gameOverShown = false;
+  stateVariables.gameState = GameState.running;
+
+  stateVariables.endTimeMs = 0;
+  stateVariables.timerPausedAtMs = null;
+  stateVariables.interactions = [];
+
+  stateVariables.npcs = [];
+  stateVariables.clockPickups = [];
+  stateVariables.activeNpcIndex = -1;
+
+  stateVariables.dialogueVisibleText = "";
+  stateVariables.dialogueTargetText = "";
+  stateVariables.dialogueLastNpcIndex = -1;
+  stateVariables.dialogueLastStepMs = 0;
+  stateVariables.dialogueOptionsRevealAtMs = 0;
+  stateVariables.dialogueHoveredOptionIndex = -1;
+  stateVariables.dialogueSelectedOptionIndex = -1;
+  stateVariables.dialogueSelectionStartedMs = 0;
+  stateVariables.dialogueSelectionNpcIndex = -1;
+  stateVariables.dialogueSuppressedNpcIndex = -1;
+  stateVariables.dialogueDismissNpcIndex = -1;
+  stateVariables.dialoguePanelNpcIndex = -1;
+  stateVariables.dialoguePanelAnim = 0;
+  stateVariables.dialoguePanelTarget = 0;
+  stateVariables.dialoguePanelLastMs = 0;
+  stateVariables.dialogueThankYouNpcIndex = -1;
+  stateVariables.dialogueThankYouStartedMs = 0;
+  stateVariables.dialogueThankYouOptionIndex = -1;
+  stateVariables.dialogueThankYouText = "";
+  stateVariables.dialogueThankYouPendingNpcIndex = -1;
+  stateVariables.dialogueThankYouPendingOptionIndex = -1;
+  stateVariables.dialogueThankYouPendingText = "";
+  stateVariables.dialogueForceCloseNpcIndex = -1;
+
+  stateVariables.mouseClicked = false;
+  stateVariables.isClickMoving = false;
+  stateVariables.clickIndicatorStartMs = 0;
+  stateVariables.isHoldingMeditationKey = false;
+  stateVariables.meditationStart = null;
+  stateVariables.meditationZoomLevel = 1;
+  stateVariables.keyState = {};
+
+  stateVariables.currentSessionId = null;
+  stateVariables.gameQuestions = [];
+  stateVariables.sessionPrefetchPromise = null;
+
+  stateVariables.player = {} as any;
+  stateVariables.bgImage = {} as any;
+  stateVariables.lantern = {} as any;
+  stateVariables.ui = {} as any;
+}
+
+async function stopSessionBestEffort(status: "ABANDONED" | "COMPLETED") {
+  if (!stateVariables.currentSessionId) return;
+  const id = stateVariables.currentSessionId;
+  GameApi.updateSessionStatus(id, status).catch((err) =>
+    console.error("Failed to update session status:", err)
+  );
+}
+
+async function exitGameToHub() {
+  stateVariables.gamePaused = true;
+  canvas.style.display = "none";
+  await exitFullscreenBestEffort();
+  if (stateVariables.currentSessionId && stateVariables.gameState !== GameState.finished) {
+    await stopSessionBestEffort("ABANDONED");
+  }
+  resetGameState();
+  slideTo(renderHub);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (!isGameVisible()) return;
+  if (stateVariables.gameOverShown) return;
+
+  if (document.hidden) {
+    // User minimized / switched away; pause and ask when they return.
+    if (!stateVariables.gamePaused) {
+      stateVariables.gamePaused = true;
+      pauseGameTimerIfRunning();
+    }
+    visibilityExitPromptPending = true;
+    return;
+  }
+
+  if (!visibilityExitPromptPending) return;
+  visibilityExitPromptPending = false;
+  // Resume gameplay when the user returns.
+  stateVariables.gamePaused = false;
+  resumeGameTimerIfPaused();
+  void enterFullscreenBestEffort();
+  setTimeout(() => ensureFullscreenOrShowRequirementForGame(), 0);
+  requestAnimationFrame(draw);
+});
+
+function onFullscreenExited() {
+  if (getFullscreenElement()) return;
+  if (!isGameVisible()) return;
+  if (stateVariables.gameOverShown) return;
+
+  ensureFullscreenOrShowRequirementForGame();
+}
+
+document.addEventListener("fullscreenchange", onFullscreenExited);
+document.addEventListener("webkitfullscreenchange" as any, onFullscreenExited);
+
+window.addEventListener("beforeunload", (e) => {
+  // User is closing the tab/window or navigating away.
+  if (!isGameVisible()) return;
+  if (stateVariables.gameOverShown) return;
+
+  stateVariables.gamePaused = true;
+  pauseGameTimerIfRunning();
+
+  // Trigger browser-native "Leave site?" confirmation dialog.
+  e.preventDefault();
+  (e as any).returnValue = "";
+  return "";
+});
+
+window.addEventListener("focus", () => {
+  // If the user cancels the tab-close/navigation prompt, resume the timer and attempt fullscreen again.
+  if (!isGameVisible()) return;
+  if (stateVariables.gameOverShown) return;
+  if (fullscreenGateOpen) return;
+  if (visibilityExitPromptPending) return; // handled by visibilitychange -> promptExitOrResume()
+
+  if (stateVariables.gamePaused) {
+    stateVariables.gamePaused = false;
+    resumeGameTimerIfPaused();
+    void enterFullscreenBestEffort();
+    setTimeout(() => ensureFullscreenOrShowRequirementForGame(), 0);
+    requestAnimationFrame(draw);
+  }
+});
 
 function openGameOverOverlay() {
   stateVariables.gamePaused = true;
@@ -918,12 +1342,12 @@ function openGameOverOverlay() {
       stateVariables.gamePaused = false;
       stateVariables.gameOverShown = false;
       stateVariables.gameState = GameState.running;
+      void enterFullscreenBestEffort();
       initializeGame();
       requestAnimationFrame(draw);
     },
     onDashboard: () => {
-      stateVariables.gamePaused = true;
-      slideTo(renderHub);
+      void exitGameToHub();
     },
   });
 }

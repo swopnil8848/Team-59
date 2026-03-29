@@ -265,7 +265,7 @@ export class Ui {
       const eased = this.easeOutCubic(t);
       const alpha = 1 - t;
 
-      const centerX = npc.startPoint.x + npc.w / 2;
+      const centerX = npc.startPoint.x + npc.currentWidth / 2;
       const baseY = npc.startPoint.y - 14;
       const slideDownY = 20 * eased;
       const bubbleY = baseY + slideDownY;
@@ -519,7 +519,7 @@ export class Ui {
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(npc.sprite, panelX + 24, panelY + 18, 82, 108);
+    ctx.drawImage(npc.sprites[0], panelX + 24, panelY + 18, 82, 108);
     ctx.restore();
 
     ctx.fillStyle = "#8bd3ff";

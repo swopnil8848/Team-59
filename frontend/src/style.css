@@ -68,6 +68,18 @@ body {
   image-rendering: pixelated;
 }
 
+#gameCanvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: none;
+  z-index: 20;
+  background: #000;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+
 
 .onboard {
   position: relative;
@@ -439,6 +451,46 @@ body {
   font-family: "Press Start 2P", monospace;
   font-size: 9px;
   color: rgba(0, 0, 0, 0.6);
+}
+
+.hub-top-right {
+  position: fixed;
+  top: calc(18px + env(safe-area-inset-top));
+  right: calc(18px + env(safe-area-inset-right));
+  z-index: 5000;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.hub-top-right .sound {
+  position: static;
+  top: auto;
+  right: auto;
+}
+
+.hub-logout {
+  position: static;
+}
+
+.hub-logout-btn {
+  width: auto;
+  min-width: 0;
+  height: 38px;
+  padding: 0 14px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.18);
+}
+
+.hub-logout-icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 
 .sound {

@@ -1,20 +1,17 @@
 import { upCounter } from "./functions";
 
-const SHEET_COLUMNS = 15;
-const SHEET_ROWS = 6;
-const BACKGROUND_TOLERANCE = 34;
-const MIN_VISIBLE_PIXELS = 120;
-
-function colorDistance(
-  r1: number,
-  g1: number,
-  b1: number,
-  r2: number,
-  g2: number,
-  b2: number
-) {
-  return Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2);
-}
+const NPC_FOLDERS = [
+  "Character 1",
+  "Character 2",
+  "Character 3",
+  "Character 4", // Double space consistent with filesystem
+  "Character 5",
+  "Character 6",
+  "Character 7",
+  "Character 8",
+  "Character 9",
+  "Character 10",
+];
 
 function trimCanvas(sourceCanvas: HTMLCanvasElement) {
   const ctx = sourceCanvas.getContext("2d");
@@ -67,79 +64,47 @@ function trimCanvas(sourceCanvas: HTMLCanvasElement) {
   return canvas;
 }
 
-function extractTile(
-  sheet: HTMLImageElement,
-  sx: number,
-  sy: number,
-  sw: number,
-  sh: number
-) {
+function imageToCanvas(img: HTMLImageElement) {
   const canvas = document.createElement("canvas");
-  canvas.width = sw;
-  canvas.height = sh;
-
+  canvas.width = img.width;
+  canvas.height = img.height;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) return null;
 
-  ctx.drawImage(sheet, sx, sy, sw, sh, 0, 0, sw, sh);
-  const imageData = ctx.getImageData(0, 0, sw, sh);
-  const { data } = imageData;
-
-  const background = [
-    data[0],
-    data[1],
-    data[2],
-    data[(sw - 1) * 4],
-    data[(sh - 1) * sw * 4],
-    data[(sh * sw - 1) * 4],
-  ];
-
-  const bgR = Math.round((background[0] + background[3] + background[4] + background[5]) / 4);
-  const bgG = Math.round((data[1] + data[(sw - 1) * 4 + 1] + data[(sh - 1) * sw * 4 + 1] + data[(sh * sw - 1) * 4 + 1]) / 4);
-  const bgB = Math.round((data[2] + data[(sw - 1) * 4 + 2] + data[(sh - 1) * sw * 4 + 2] + data[(sh * sw - 1) * 4 + 2]) / 4);
-
-  let visiblePixels = 0;
-
-  for (let i = 0; i < data.length; i += 4) {
-    const dist = colorDistance(data[i], data[i + 1], data[i + 2], bgR, bgG, bgB);
-    if (dist <= BACKGROUND_TOLERANCE) {
-      data[i + 3] = 0;
-      continue;
-    }
-
-    visiblePixels++;
-  }
-
-  if (visiblePixels < MIN_VISIBLE_PIXELS) return null;
-
-  ctx.putImageData(imageData, 0, 0);
+  ctx.drawImage(img, 0, 0);
+  
+  // Since these are PNGs with likely transparent backgrounds, 
+  // we just need to trim any empty space.
   return trimCanvas(canvas);
 }
 
-export function loadHiddenCharacterSpriteSheet(onReady: (sprites: HTMLCanvasElement[]) => void) {
-  const sheet = new Image();
-  sheet.src = "assets/characters/freepik_0001.png";
-  sheet.onload = () => {
-    upCounter();
+export function loadHiddenCharacterSpriteSheet(onReady: (sprites: HTMLCanvasElement[][]) => void) {
+  const promises = NPC_FOLDERS.map((folder) => {
+    const frames = [1, 2];
+    const framePromises = frames.map((f) => {
+      return new Promise<HTMLCanvasElement | null>((resolve) => {
+        const img = new Image();
+        img.src = `assets/npc/${folder}/front/front(${f}).png`;
+        img.onload = () => {
+          upCounter();
+          resolve(imageToCanvas(img));
+        };
+        img.onerror = () => {
+          console.warn(`Failed to load NPC sprite: ${img.src}`);
+          resolve(null);
+        };
+      });
+    });
 
-    const tileWidth = Math.floor(sheet.width / SHEET_COLUMNS);
-    const tileHeight = Math.floor(sheet.height / SHEET_ROWS);
-    const sprites: HTMLCanvasElement[] = [];
+    return Promise.all(framePromises).then((results) => {
+      const validFrames = results.filter((s): s is HTMLCanvasElement => s !== null);
+      return validFrames.length > 0 ? validFrames : null;
+    });
+  });
 
-    for (let row = 0; row < SHEET_ROWS; row++) {
-      for (let column = 0; column < SHEET_COLUMNS; column++) {
-        const sprite = extractTile(
-          sheet,
-          column * tileWidth,
-          row * tileHeight,
-          tileWidth,
-          tileHeight
-        );
-
-        if (sprite) sprites.push(sprite);
-      }
-    }
-
-    onReady(sprites);
-  };
+  Promise.all(promises).then((results) => {
+    const allNpcSprites = results.filter((s): s is HTMLCanvasElement[] => s !== null);
+    onReady(allNpcSprites);
+  });
 }
+

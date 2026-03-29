@@ -6,7 +6,8 @@ export class HealthController {
   getHealth() {
     return {
       status: "ok",
-      service: "backend"
+      service: "backend",
+      code: 200
     };
   }
 }

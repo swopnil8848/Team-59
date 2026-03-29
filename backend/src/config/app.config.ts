@@ -11,5 +11,14 @@ export default () => ({
   },
   integrations: {
     aiBackendUrl: process.env.AI_BACKEND_URL ?? "http://13.220.64.204"
+  },
+  redis: {
+    host: process.env.REDIS_HOST ?? "127.0.0.1",
+    port: Number(process.env.REDIS_PORT ?? 6379),
+    password: process.env.REDIS_PASSWORD ?? undefined,
+    prefetchLockTtlSeconds: Number(process.env.REDIS_PREFETCH_LOCK_TTL_SECONDS ?? 120),
+    prefetchBackfillIntervalMs: Number(
+      process.env.REDIS_PREFETCH_BACKFILL_INTERVAL_MS ?? 60_000
+    )
   }
 });

@@ -14,8 +14,21 @@ window.addEventListener(
   },
   true
 );
+window.addEventListener(
+  "blur",
+  function () {
+    stateVariables.keyState = {};
+  },
+  true
+);
+
 
 export function handleMovementControls() {
+  const up = stateVariables.keyState[87] || stateVariables.keyState[38];
+  const left = stateVariables.keyState[65] || stateVariables.keyState[37];
+  const down = stateVariables.keyState[83] || stateVariables.keyState[40];
+  const right = stateVariables.keyState[68] || stateVariables.keyState[39];
+
   if (stateVariables.isHoldingMeditationKey) {
     stateVariables.player.dirX = 0;
     stateVariables.player.dirY = 0;
@@ -41,52 +54,48 @@ export function handleMovementControls() {
     stateVariables.clickIndicatorStartMs = Date.now();
   }
 
-  const isMovingKey =
-    !!stateVariables.keyState[87] ||
-    !!stateVariables.keyState[65] ||
-    !!stateVariables.keyState[83] ||
-    !!stateVariables.keyState[68];
+  const isMovingKey = up || down || left || right;
 
   if (isMovingKey) {
     stateVariables.isClickMoving = false;
   }
 
-  if (stateVariables.keyState[87] && stateVariables.keyState[68]) {
+  if (up && right) {
     stateVariables.player.direction = "u";
     stateVariables.player.dirX = -0.72;
     stateVariables.player.dirY = 0.72;
     stateVariables.player.move();
-  } else if (stateVariables.keyState[87] && stateVariables.keyState[65]) {
+  } else if (up && left) {
     stateVariables.player.direction = "u";
     stateVariables.player.dirX = 0.72;
     stateVariables.player.dirY = 0.72;
     stateVariables.player.move();
-  } else if (stateVariables.keyState[83] && stateVariables.keyState[65]) {
+  } else if (down && left) {
     stateVariables.player.direction = "d";
     stateVariables.player.dirX = 0.72;
     stateVariables.player.dirY = -0.72;
     stateVariables.player.move();
-  } else if (stateVariables.keyState[83] && stateVariables.keyState[68]) {
+  } else if (down && right) {
     stateVariables.player.direction = "d";
     stateVariables.player.dirX = -0.72;
     stateVariables.player.dirY = -0.72;
     stateVariables.player.move();
-  } else if (stateVariables.keyState[65]) {
+  } else if (left) {
     stateVariables.player.direction = "l";
     stateVariables.player.dirX = 1;
     stateVariables.player.dirY = 0;
     stateVariables.player.move();
-  } else if (stateVariables.keyState[68]) {
+  } else if (right) {
     stateVariables.player.direction = "r";
     stateVariables.player.dirX = -1;
     stateVariables.player.dirY = 0;
     stateVariables.player.move();
-  } else if (stateVariables.keyState[83]) {
+  } else if (down) {
     stateVariables.player.direction = "d";
     stateVariables.player.dirX = 0;
     stateVariables.player.dirY = -1;
     stateVariables.player.move();
-  } else if (stateVariables.keyState[87]) {
+  } else if (up) {
     stateVariables.player.direction = "u";
     stateVariables.player.dirX = 0;
     stateVariables.player.dirY = 1;
@@ -136,11 +145,13 @@ export function handleMovementControls() {
 }
 
 export function handleOtherControls() {
-  const isMovingKey =
-    !!stateVariables.keyState[87] ||
-    !!stateVariables.keyState[65] ||
-    !!stateVariables.keyState[83] ||
-    !!stateVariables.keyState[68];
+  const up = stateVariables.keyState[87] || stateVariables.keyState[38];
+  const left = stateVariables.keyState[65] || stateVariables.keyState[37];
+  const down = stateVariables.keyState[83] || stateVariables.keyState[40];
+  const right = stateVariables.keyState[68] || stateVariables.keyState[39];
+
+  const isMovingKey = up || down || left || right;
+
   const isMoving = isMovingKey || stateVariables.isClickMoving;
   if (stateVariables.player.stamina <= 0) {
     stateVariables.player.isExhausted = true;
