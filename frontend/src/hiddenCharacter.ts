@@ -19,6 +19,18 @@ export class HiddenCharacter {
     this.collected = false;
   }
 
+  checkCollision(offsetX: number, offsetY: number) {
+    if (this.collected) return false;
+    const nextCenterX = this.startPoint.x + offsetX + this.w / 2;
+    const nextCenterY = this.startPoint.y + offsetY + this.h / 2;
+    const playerCenterX = stateVariables.player.startPoint.x + 28;
+    const playerCenterY = stateVariables.player.startPoint.y + 40;
+    const dx = nextCenterX - playerCenterX;
+    const dy = nextCenterY - playerCenterY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return dist < this.w / 2 + 10;
+  }
+
   show(ctx: CanvasRenderingContext2D = stateVariables.ctx) {
     if (this.collected) return;
     ctx.drawImage(this.sprite, this.startPoint.x, this.startPoint.y, this.w, this.h);

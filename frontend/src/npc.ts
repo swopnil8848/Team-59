@@ -18,6 +18,7 @@ export class NPC {
   interactionRadius: number;
   frameToShow: number;
   frameTime: number;
+  collected: boolean;
 
   constructor(x: number, y: number, sprites: HTMLCanvasElement[], dialogue: NpcDialogue) {
     this.startPoint = new Point(x, y);
@@ -26,6 +27,7 @@ export class NPC {
     this.interactionRadius = 92;
     this.frameToShow = 0;
     this.frameTime = 24; // Slow animation for idling NPCs
+    this.collected = false;
   }
 
   get currentWidth() {
@@ -34,6 +36,18 @@ export class NPC {
 
   get currentHeight() {
     return this.sprites[0]?.height || 82;
+  }
+
+  checkCollision(offsetX: number, offsetY: number) {
+    if (this.collected) return false;
+    const nextCenterX = this.startPoint.x + offsetX + this.currentWidth / 2;
+    const nextCenterY = this.startPoint.y + offsetY + this.currentHeight / 2;
+    const playerCenterX = stateVariables.player.startPoint.x + 28;
+    const playerCenterY = stateVariables.player.startPoint.y + 40;
+    const dx = nextCenterX - playerCenterX;
+    const dy = nextCenterY - playerCenterY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return dist < this.currentWidth / 2 + 10;
   }
 
   show(ctx: CanvasRenderingContext2D = stateVariables.ctx) {
