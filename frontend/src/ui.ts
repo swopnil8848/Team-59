@@ -500,8 +500,8 @@ export class Ui {
     const fullScenario = npc.dialogue.scenario;
     const typedScenario = this.updateTypewriterText(fullScenario, shownNpcIndex);
 
-    const panelWidth = Math.min(stateVariables.windowWidth - 32, 900);
-    const panelHeight = 300;
+    const panelWidth = Math.min(stateVariables.windowWidth - 32, 920);
+    const panelHeight = 330;
     const panelX = (stateVariables.windowWidth - panelWidth) / 2;
     const panelY = stateVariables.windowHeight - panelHeight - 32;
     const portraitBoxWidth = 140;
@@ -611,11 +611,30 @@ export class Ui {
     );
     ctx.restore();
 
-    // Name Plate (Floating Retro Style)
+    // name plate (Floating Retro Style)
+    ctx.save();
+    ctx.font = '26px vtfont, "Courier New", monospace';
+    if ('letterSpacing' in ctx) (ctx as any).letterSpacing = '1px';
+
+    const rawName = (npc.dialogue.name || "Wanderer").toUpperCase();
+    const maxPlateW = panelWidth * 0.5;
+    const paddingX = 40;
+    let displayName = rawName;
+    let textW = ctx.measureText(displayName).width;
+
+    if (textW > maxPlateW - paddingX) {
+      // Truncate if it exceeds 50% of panel width
+      while (displayName.length > 0 && ctx.measureText(displayName + "...").width > maxPlateW - paddingX) {
+        displayName = displayName.slice(0, -1);
+      }
+      displayName += "...";
+      textW = ctx.measureText(displayName).width;
+    }
+
+    const nameW = Math.max(140, textW + paddingX);
     const nameX = panelX + 20;
     const nameY = panelY - 14;
-    const nameW = 200;
-    const nameH = 36;
+    const nameH = 42;
 
     // Plate Shadow
     ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
@@ -629,20 +648,24 @@ export class Ui {
     ctx.strokeRect(nameX + 1, nameY + 1, nameW - 2, nameH - 2);
 
     ctx.fillStyle = "#fff";
-    ctx.font = '22px vtfont, "Courier New", monospace';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(npc.dialogue.name.toUpperCase(), nameX + nameW / 2, nameY + nameH / 2 + 2);
+    ctx.fillText(displayName, nameX + nameW / 2, nameY + nameH / 2 + 2);
+    ctx.restore();
 
     // Calculate Content Height
-    const scenarioHeight = this.measureWrappedText(fullScenario, textWidth, 28, ctx);
+    ctx.save();
+    ctx.font = '24px vtfont, "Courier New", monospace';
+    if ('letterSpacing' in ctx) (ctx as any).letterSpacing = '0.5px';
+
+    const scenarioHeight = this.measureWrappedText(fullScenario, textWidth, 32, ctx);
     const optionsGap = 20;
-    const optionH = 36;
+    const optionH = 38;
     const optionP = 10;
     const typingComplete = typedScenario.length >= fullScenario.length;
     const canShowOptions = typingComplete && now >= stateVariables.dialogueOptionsRevealAtMs;
     const totalOptionsHeight = canShowOptions ? npc.dialogue.options.length * (optionH + optionP) : 0;
-    const totalContentHeight = scenarioHeight + (canShowOptions ? optionsGap + totalOptionsHeight : 40) + 10;
+    const totalContentHeight = scenarioHeight + (canShowOptions ? optionsGap + totalOptionsHeight : 45) + 10;
     const clipH = panelHeight - 48;
     const clipY = panelY + 24;
 
@@ -662,13 +685,13 @@ export class Ui {
     ctx.fillStyle = "#e8eff5";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.font = '20px vtfont, "Courier New", monospace';
+    ctx.font = '24px vtfont, "Courier New", monospace';
     const scenarioEndY = this.drawWrappedText(
       typedScenario,
       textStartX,
       panelY + 36,
       textWidth,
-      28, // Increased line height for clarity
+      32,
       ctx
     );
 
@@ -679,9 +702,9 @@ export class Ui {
     if (!canShowOptions) {
       if (Math.floor(now / 500) % 2 === 0) {
         ctx.fillStyle = "#8bd3ff";
-        ctx.font = '18px vtfont';
+        ctx.font = '22px vtfont';
         // Simplified cursor position for robustness while typing
-        ctx.fillText("_", textStartX, scenarioEndY + 28);
+        ctx.fillText("_", textStartX, scenarioEndY + 32);
       }
     } else {
       const optionsStartY = Math.max(panelY + 95, scenarioEndY + 35);
@@ -693,7 +716,7 @@ export class Ui {
       const clickX = clickXRaw;
       const clickY = clickYRaw + stateVariables.dialogueScrollY; // Offset click by scroll
 
-      ctx.font = '19px vtfont, "Courier New", monospace';
+      ctx.font = '22px vtfont, "Courier New", monospace';
       npc.dialogue.options.forEach((option, index) => {
         const optionY = optionsStartY + index * (optionH + optionP);
         const rectX = optionX;
