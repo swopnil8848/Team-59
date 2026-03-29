@@ -134,15 +134,15 @@ export class QuestionGenerationService {
         throw new BadGatewayException("NPC question generation returned an answer without text");
       }
 
-      if (typeof rawAnswer.correct !== "boolean") {
+      if (typeof rawAnswer.category !== "string" || rawAnswer.category.trim().length === 0) {
         throw new BadGatewayException(
-          "NPC question generation returned an answer without correctness"
+          "NPC question generation returned an answer without category"
         );
       }
 
       return {
         text: rawAnswer.text.trim(),
-        correct: rawAnswer.correct,
+        category: rawAnswer.category.trim(),
         feedback: typeof rawAnswer.feedback === "string" ? rawAnswer.feedback.trim() : null
       };
     });

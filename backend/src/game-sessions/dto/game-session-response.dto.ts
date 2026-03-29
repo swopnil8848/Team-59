@@ -14,8 +14,8 @@ export class GameAnswerOptionDto {
   })
   answerText!: string;
 
-  @ApiProperty({ example: true })
-  isCorrect!: boolean;
+  @ApiProperty({ example: "correct" })
+  category!: string;
 
   @ApiPropertyOptional({
     nullable: true,
@@ -25,8 +25,8 @@ export class GameAnswerOptionDto {
 }
 
 export class SelectedGameAnswerDto extends GameAnswerOptionDto {
-  @ApiProperty({ example: true })
-  isCorrect!: boolean;
+  @ApiProperty({ example: "correct" })
+  category!: string;
 
   @ApiPropertyOptional({
     nullable: true,

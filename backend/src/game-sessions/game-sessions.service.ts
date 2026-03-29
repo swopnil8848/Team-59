@@ -27,7 +27,7 @@ type GameQuestionWithAnswers = GameQuestion & {
   outsider: boolean;
   answers: Array<
     GameQuestionAnswer & {
-      isCorrect: boolean;
+      category: string;
       feedback: string | null;
     }
   >;
@@ -229,7 +229,7 @@ export class GameSessionsService {
       selectedAnswer: {
         id: selectedAnswer.id,
         answerText: selectedAnswer.answerText,
-        isCorrect: (selectedAnswer as GameQuestionWithAnswers["answers"][number]).isCorrect,
+        category: (selectedAnswer as GameQuestionWithAnswers["answers"][number]).category,
         feedback:
           (selectedAnswer as GameQuestionWithAnswers["answers"][number]).feedback ?? null
       },
@@ -297,7 +297,7 @@ export class GameSessionsService {
             answers: {
               create: question.answers.map((answer) => ({
                 answerText: answer.text,
-                isCorrect: answer.correct,
+                category: answer.category,
                 feedback: answer.feedback
               }))
             }
@@ -340,7 +340,7 @@ export class GameSessionsService {
       answers: question.answers.map((answer) => ({
         id: answer.id,
         answerText: answer.answerText,
-        isCorrect: answer.isCorrect,
+        category: answer.category,
         feedback: answer.feedback ?? null
       }))
     };

@@ -1,6 +1,6 @@
 export interface GeneratedQuestionAnswer {
   text: string;
-  correct: boolean;
+  category: string;
   feedback: string | null;
 }
 

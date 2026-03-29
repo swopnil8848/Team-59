@@ -124,7 +124,7 @@ model GameQuestionAnswer {
   questionId        String
   question          GameQuestion       @relation(fields: [questionId], references: [id], onDelete: Cascade)
   answerText        String
-  isCorrect         Boolean            @default(false)
+  category          String             @default("incorrect")
   feedback          String?
   selectedByAnswers GameUserResponse[] @relation("SelectedAnswer")
   createdAt         DateTime           @default(now())
