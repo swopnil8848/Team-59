@@ -32,18 +32,12 @@ Behind the scenes, the backend and AI service work together to generate structur
 ## Architecture
 ![Architecture Diagram](./docs/architecture.png)
 
-## AI Structure (Pipeline)
-```mermaid
-flowchart TD
-  A[User signup/login<br/>Profile: age, gender, environment] --> B[Backend API]
-  B --> C[AI Backend: generate NPC question set]
-  C --> B
-  B --> D[Frontend gameplay]
-  D --> B[Answers + categories]
-  B --> E[AI Backend: generate progress report]
-  E --> B
-  B --> F[Dashboard: burnout/stress/uncertainty + guidance]
-```
+## AI Explained (Plain English)
+The AI works like a careful writer and reviewer behind the scenes. It does not chat with players directly. Instead:
+- **Before you play:** it drafts the NPC situations based on the profile you shared (age, gender, environment), so the prompts feel relevant.
+- **After you play:** it reviews your choices and summarizes patterns into a short progress report (burnout, stress, uncertainty) with supportive guidance.
+
+Everything still flows through the backend, which keeps the game fast, consistent, and secure.
 
 ## Repo Structure
 - `frontend/` — Vite + TypeScript game UI
