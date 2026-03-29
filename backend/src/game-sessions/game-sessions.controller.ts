@@ -25,7 +25,7 @@ export class GameSessionsController {
 
   @Post()
   @ApiOperation({
-    summary: "Create a new game session and generate the full question set"
+    summary: "Create a new game session using prefetched questions when available"
   })
   @ApiEnvelopeResponse({
     description: "Game session created successfully",

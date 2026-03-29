@@ -7,6 +7,7 @@ import { GameSessionsModule } from "./game-sessions/game-sessions.module";
 import { HealthController } from "./health.controller";
 import { OnboardingModule } from "./onboarding/onboarding.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { QuestionPrefetchModule } from "./question-prefetch/question-prefetch.module";
 import { UsersModule } from "./users/users.module";
 
 @Module({
@@ -18,6 +19,7 @@ import { UsersModule } from "./users/users.module";
       validate: validateEnv
     }),
     PrismaModule,
+    QuestionPrefetchModule,
     UsersModule,
     AuthModule,
     OnboardingModule,
