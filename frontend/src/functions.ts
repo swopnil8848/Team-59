@@ -201,11 +201,11 @@ function createRandomHiddenCharacters(centerX: number, centerY: number, question
   const chosenOffsets = shuffleArray(spawnOffsets).slice(0, chosenSprites.length);
 
   return chosenSprites.map(
-    (sprite, index) =>
+    (sprites, index) =>
       new NPC(
         centerX + chosenOffsets[index].x,
         centerY + chosenOffsets[index].y,
-        sprite,
+        sprites,
         apiDialogues[index] ?? dialoguePool[index % dialoguePool.length]
       )
   );
