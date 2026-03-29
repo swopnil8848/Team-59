@@ -20,6 +20,7 @@ Behind the scenes, the backend and AI service work together to generate structur
 
 ## Live Demo
 - App: `http://100.54.109.124/TEAM-59/`
+- You can register your account and also you can directly login using this account email: `riya12@gmail.com` password `riya1234`
 - Backend Swagger: `http://100.54.109.124/api/docs`
 - AI Swagger: `http://100.54.109.124/docs`
 
@@ -30,6 +31,19 @@ Behind the scenes, the backend and AI service work together to generate structur
 
 ## Architecture
 ![Architecture Diagram](./docs/architecture.png)
+
+## AI Structure (Pipeline)
+```mermaid
+flowchart TD
+  A[User signup/login<br/>Profile: age, gender, environment] --> B[Backend API]
+  B --> C[AI Backend: generate NPC question set]
+  C --> B
+  B --> D[Frontend gameplay]
+  D --> B[Answers + categories]
+  B --> E[AI Backend: generate progress report]
+  E --> B
+  B --> F[Dashboard: burnout/stress/uncertainty + guidance]
+```
 
 ## Repo Structure
 - `frontend/` — Vite + TypeScript game UI
