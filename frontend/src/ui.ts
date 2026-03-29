@@ -18,6 +18,9 @@ export class Ui {
       stateVariables.dialogueSelectedOptionIndex = -1;
       stateVariables.dialogueSelectionStartedMs = 0;
       stateVariables.dialogueSelectionNpcIndex = -1;
+      stateVariables.dialoguePendingSubmitNpcIndex = -1;
+      stateVariables.dialoguePendingSubmitOptionIndex = -1;
+      stateVariables.dialoguePendingSubmitStartedMs = 0;
       stateVariables.dialogueScrollY = 0;
     }
 
@@ -252,7 +255,10 @@ export class Ui {
           stateVariables.pendingFeedbackNpcKey = null;
         }
         const elapsed = now - stateVariables.dialogueThankYouStartedMs;
-        const durationMs = 1300;
+        const inMs = 160;
+        const holdMs = 1200;
+        const outMs = 420;
+        const durationMs = inMs + holdMs + outMs;
         if (elapsed >= 0) {
           if (elapsed >= durationMs) {
             stateVariables.dialogueThankYouNpcIndex = -1;
@@ -260,13 +266,16 @@ export class Ui {
             stateVariables.dialogueThankYouOptionIndex = -1;
             stateVariables.dialogueThankYouText = "";
           } else {
-            const t = Math.max(0, Math.min(1, elapsed / durationMs));
-            const eased = this.easeOutCubic(t);
-            const alpha = 1 - t;
+            const alpha = (() => {
+              if (elapsed < inMs) return this.easeOutCubic(elapsed / inMs);
+              if (elapsed < inMs + holdMs) return 1;
+              return 1 - this.easeOutCubic((elapsed - inMs - holdMs) / outMs);
+            })();
+            const easedIn = this.easeOutCubic(Math.max(0, Math.min(1, elapsed / inMs)));
 
             const centerX = thankNpc.startPoint.x + thankNpc.currentWidth / 2;
             const baseY = thankNpc.startPoint.y - 14;
-            const slideDownY = 20 * eased;
+            const slideDownY = 16 * easedIn;
             const bubbleY = baseY + slideDownY;
 
             const text = stateVariables.dialogueThankYouText || "Thank you!";
@@ -279,27 +288,29 @@ export class Ui {
             const padY = 10;
             const lineH = 18;
 
-            const words = text.split(/\s+/).filter(Boolean);
-            const lines: string[] = [];
-            let lineStr = "";
-            for (const word of words) {
-              const test = lineStr ? `${lineStr} ${word}` : word;
-              if (ctx.measureText(test).width > maxBubbleW - padX * 2 && lineStr) {
-                lines.push(lineStr);
-                lineStr = word;
-              } else {
-                lineStr = test;
+            const wrap = (input: string) => {
+              const words = input.split(/\s+/).filter(Boolean);
+              const lines: string[] = [];
+              let lineStr = "";
+              for (const word of words) {
+                const test = lineStr ? `${lineStr} ${word}` : word;
+                if (ctx.measureText(test).width > maxBubbleW - padX * 2 && lineStr) {
+                  lines.push(lineStr);
+                  lineStr = word;
+                } else {
+                  lineStr = test;
+                }
               }
-            }
-            if (lineStr) lines.push(lineStr);
+              if (lineStr) lines.push(lineStr);
+              return lines;
+            };
 
-            const lineWidths = lines.map((l) => ctx.measureText(l).width);
-            const contentW = Math.min(
-              maxBubbleW - padX * 2,
-              Math.max(0, ...lineWidths)
-            );
+            // Keep the bubble size stable by measuring the full text.
+            const fullLines = wrap(text);
+            const fullLineWidths = fullLines.map((l) => ctx.measureText(l).width);
+            const contentW = Math.min(maxBubbleW - padX * 2, Math.max(0, ...fullLineWidths));
             const bubbleW = Math.max(120, Math.ceil(contentW + padX * 2));
-            const bubbleH = Math.max(34, Math.ceil(lines.length * lineH + padY * 2));
+            const bubbleH = Math.max(34, Math.ceil(fullLines.length * lineH + padY * 2));
 
             const bubbleTopY = bubbleY - bubbleH;
             const bubbleX = centerX - bubbleW / 2;
@@ -326,20 +337,27 @@ export class Ui {
             ctx.closePath();
             ctx.fill();
 
-            // Text
+            // Text (typewriter-style reveal)
             ctx.fillStyle = "#09131a";
             ctx.textAlign = "center";
-            const textCenterY = bubbleTopY + bubbleH / 2 - ((lines.length - 1) * lineH) / 2;
-            lines.forEach((l, i) => {
-              ctx.fillText(l, centerX, textCenterY + i * lineH + 5);
+            ctx.textBaseline = "top";
+            const revealMs = Math.min(900, Math.max(320, text.length * 14));
+            const revealProgress = Math.max(0, Math.min(1, elapsed / revealMs));
+            const visibleChars = Math.max(0, Math.min(text.length, Math.floor(revealProgress * text.length)));
+            const visibleText = text.slice(0, visibleChars);
+            const visibleLines = wrap(visibleText);
+            const textTopY = bubbleTopY + padY + 3;
+            visibleLines.forEach((l, i) => {
+              ctx.fillText(l, centerX, textTopY + i * lineH);
             });
 
-            const pulseAlpha = Math.max(0, 0.32 - 0.32 * t);
+            const pulseT = Math.max(0, Math.min(1, elapsed / durationMs));
+            const pulseAlpha = Math.max(0, 0.32 - 0.32 * pulseT);
             ctx.globalAlpha = pulseAlpha;
             ctx.strokeStyle = "rgba(139, 211, 255, 0.75)";
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(centerX, bubbleTopY + bubbleH / 2, 14 + 22 * eased, 0, Math.PI * 2);
+            ctx.arc(centerX, bubbleTopY + bubbleH / 2, 14 + 22 * easedIn, 0, Math.PI * 2);
             ctx.stroke();
 
             ctx.restore();
@@ -503,6 +521,9 @@ export class Ui {
       stateVariables.dialogueSelectedOptionIndex = -1;
       stateVariables.dialogueSelectionStartedMs = 0;
       stateVariables.dialogueSelectionNpcIndex = -1;
+      stateVariables.dialoguePendingSubmitNpcIndex = -1;
+      stateVariables.dialoguePendingSubmitOptionIndex = -1;
+      stateVariables.dialoguePendingSubmitStartedMs = 0;
       stateVariables.dialoguePanelRect.visible = false;
       return;
     }
@@ -731,16 +752,27 @@ export class Ui {
       const optionX = textStartX;
       const optionWidth = panelWidth - portraitBoxWidth - 50; // Narrower to fit scrollbar
 
+      const isSubmitting =
+        stateVariables.dialoguePendingSubmitNpcIndex === shownNpcIndex &&
+        stateVariables.dialoguePendingSubmitStartedMs > 0;
+
       stateVariables.dialogueHoveredOptionIndex = -1;
-      const isClickPending = stateVariables.mouseClicked;
+      const isClickPending = !isSubmitting && stateVariables.mouseClicked;
       const clickX = clickXRaw;
       const clickY = clickYRaw + stateVariables.dialogueScrollY; // Offset click by scroll
 
       ctx.font = '22px vtfont, "Courier New", monospace';
+      // Render options immediately (no reveal animation). Only the "answer chosen" tick animates.
+      const optionRevealMs = 1;
+      const optionStaggerMs = 0;
       npc.dialogue.options.forEach((option, index) => {
         const optionY = optionsStartY + index * (optionH + optionP);
         const rectX = optionX;
-        const rectY = optionY;
+        const appearStartMs = stateVariables.dialogueOptionsRevealAtMs + index * optionStaggerMs;
+        const appearProgress = Math.max(0, Math.min(1, (now - appearStartMs) / optionRevealMs));
+        const appearEase = this.easeOutCubic(appearProgress);
+        if (appearEase <= 0) return;
+        const rectY = optionY + (1 - appearEase) * 10;
 
         const isHovered =
           mouseX >= rectX &&
@@ -748,11 +780,14 @@ export class Ui {
           (mouseY + stateVariables.dialogueScrollY) >= rectY &&
           (mouseY + stateVariables.dialogueScrollY) <= rectY + optionH;
 
-        if (isHovered) stateVariables.dialogueHoveredOptionIndex = index;
+        if (appearEase > 0.4 && isHovered) stateVariables.dialogueHoveredOptionIndex = index;
 
         const isSelected =
           stateVariables.dialogueSelectionNpcIndex === shownNpcIndex &&
           stateVariables.dialogueSelectedOptionIndex === index;
+
+        ctx.save();
+        ctx.globalAlpha = appearEase;
 
         // Option Background
         if (isHovered) {
@@ -791,22 +826,15 @@ export class Ui {
           const progress = Math.min(1, (now - stateVariables.dialogueSelectionStartedMs) / 220);
           this.drawAnimatedTick(rectX + optionWidth - 24, rectY + optionH / 2, progress, ctx);
         }
+        ctx.restore();
       });
 
-      if (isClickPending) {
-        const clickedIndex = npc.dialogue.options.findIndex((_, index) => {
-          const optionY = optionsStartY + index * (optionH + optionP);
-          const rectX = optionX;
-          const rectY = optionY;
-          return (
-            clickX >= rectX &&
-            clickX <= rectX + optionWidth &&
-            clickY >= rectY &&
-            clickY <= rectY + optionH
-          );
-        });
-
-        if (clickedIndex !== -1) {
+      // If an answer was clicked, keep the panel open briefly so the tick animation is visible,
+      // then perform the actual submit/close actions.
+      if (isSubmitting) {
+        const selectionAnimMs = 220;
+        if (now - stateVariables.dialoguePendingSubmitStartedMs >= selectionAnimMs) {
+          const clickedIndex = stateVariables.dialoguePendingSubmitOptionIndex;
           const chosenText = npc.dialogue.options[clickedIndex] ?? "";
           const questionId = npc.dialogue.questionId;
           const answerId = npc.dialogue.answerIds?.[clickedIndex];
@@ -834,6 +862,7 @@ export class Ui {
               })
               .catch((err) => console.error("Failed to report answer:", err));
           }
+
           stateVariables.interactions.push({
             npcName: npc.dialogue.name,
             optionIndex: clickedIndex,
@@ -843,9 +872,6 @@ export class Ui {
           markNpcCompleted(npc);
           stateVariables.player.score += 1;
 
-          stateVariables.dialogueSelectedOptionIndex = clickedIndex;
-          stateVariables.dialogueSelectionStartedMs = now;
-          stateVariables.dialogueSelectionNpcIndex = shownNpcIndex;
           stateVariables.dialogueThankYouPendingNpcIndex = shownNpcIndex;
           stateVariables.dialogueThankYouPendingOptionIndex = clickedIndex;
           stateVariables.dialogueThankYouPendingText =
@@ -853,6 +879,36 @@ export class Ui {
           stateVariables.dialogueDismissNpcIndex = shownNpcIndex;
           stateVariables.dialogueForceCloseNpcIndex = shownNpcIndex;
           stateVariables.dialoguePanelTarget = 0;
+
+          stateVariables.dialoguePendingSubmitNpcIndex = -1;
+          stateVariables.dialoguePendingSubmitOptionIndex = -1;
+          stateVariables.dialoguePendingSubmitStartedMs = 0;
+        }
+      }
+
+      if (isClickPending) {
+        const clickedIndex = npc.dialogue.options.findIndex((_, index) => {
+          const optionY = optionsStartY + index * (optionH + optionP);
+          const rectX = optionX;
+          const appearStartMs = stateVariables.dialogueOptionsRevealAtMs + index * optionStaggerMs;
+          const appearProgress = Math.max(0, Math.min(1, (now - appearStartMs) / optionRevealMs));
+          if (appearProgress < 0.001) return false;
+          const rectY = optionY;
+          return (
+            clickX >= rectX &&
+            clickX <= rectX + optionWidth &&
+            clickY >= rectY &&
+            clickY <= rectY + optionH
+          );
+        });
+
+        if (clickedIndex !== -1) {
+          stateVariables.dialogueSelectedOptionIndex = clickedIndex;
+          stateVariables.dialogueSelectionStartedMs = now;
+          stateVariables.dialogueSelectionNpcIndex = shownNpcIndex;
+          stateVariables.dialoguePendingSubmitNpcIndex = shownNpcIndex;
+          stateVariables.dialoguePendingSubmitOptionIndex = clickedIndex;
+          stateVariables.dialoguePendingSubmitStartedMs = now;
         }
 
         stateVariables.mouseClicked = false;
