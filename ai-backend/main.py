@@ -9,9 +9,9 @@ class PlayerData(BaseModel):
     age: int
     environment: str
 
-@app.get("/health")
+@app.get("/")
 def health():
-    return {"status": "ok", "service": "ai-backend"}
+    return {"status": "ok", "message": "Hello Hackathon World","service":"Maybe you are looking for /docs"}
 
 @app.post("/npc-questions")
 def npc_questions(data: PlayerData):
