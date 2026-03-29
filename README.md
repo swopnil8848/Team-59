@@ -1,394 +1,153 @@
-# HACK
-
-# Backend Setup Guide
-
-This backend is a NestJS API that uses PostgreSQL and Prisma.
-
-## 1. Prerequisites
-
-Install these tools before starting:
-
-- Node.js 20 or newer
-- npm
-- PostgreSQL 14 or newer
-
-You can verify the installs with:
-
-```powershell
-node -v
-npm -v
-psql --version
-```
-
-If `psql` is not recognized, PostgreSQL may still be installed, but its `bin` folder is not on your `PATH`.
-
-## 2. Open the backend folder
-
-From the project root:
-
-```powershell
-cd backend
-```
-
-All remaining commands in this guide should be run inside the `backend` folder.
-
-## 3. Install dependencies
-
-```powershell
-npm install
-```
-
-This installs NestJS, Prisma, and the rest of the backend dependencies.
-
-## 4. Create the environment file
-
-Copy `.env.example` into a real `.env` file:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-After that, open [`.env`](d:/Team-59/backend/.env) and update the values.
-
-Example:
-
-```env
-NODE_ENV=development
-PORT=3001
-API_PREFIX=api
-DATABASE_URL=postgresql://postgres:your_password_here@localhost:5432/us_nep_hackathon
-JWT_SECRET=replace-this-with-a-long-random-secret
-JWT_EXPIRES_IN=7d
-FRONTEND_ORIGIN=http://localhost:5173
-```
-
-## 5. Understand each `.env` value
-
-`NODE_ENV`
-
-- Use `development` for local work.
-
-`PORT`
-
-- This is the backend server port.
-- Default in this project is `3001`.
-
-`API_PREFIX`
-
-- This project prefixes all routes with `api`.
-- Example: `http://localhost:3001/api/auth/login`
-
-`DATABASE_URL`
-
-- This is the PostgreSQL connection string.
-- Format:
-
-```text
-postgresql://USERNAME:PASSWORD@HOST:PORT/DATABASE_NAME
-```
-
-- For local PostgreSQL, this usually looks like:
-
-```text
-postgresql://postgres:your_password_here@localhost:5432/us_nep_hackathon
-```
-
-`JWT_SECRET`
-
-- This is used to sign login tokens.
-- Use a long, random string.
-- Example:
-
-```text
-my-super-long-local-development-secret-key-12345
-```
-
-`JWT_EXPIRES_IN`
-
-- Token lifetime.
-- `7d` is already a good default for local development.
-
-`FRONTEND_ORIGIN`
-
-- The frontend URL that is allowed to call this backend through CORS.
-- For local frontend development, keep:
-
-```text
-http://localhost:5173
-```
-
-## 6. Create the PostgreSQL database
-
-You need a PostgreSQL server running locally before the backend can start.
-
-### Option A: Using `psql`
-
-Open PowerShell and start the PostgreSQL shell:
-
-```powershell
-psql -U postgres
-```
-
-If PostgreSQL asks for a password, enter the password you created when installing PostgreSQL.
-
-If you do not remember your PostgreSQL password, you need to reset it in PostgreSQL before continuing.
-
-After entering `psql`, create the database:
-
-```sql
-CREATE DATABASE us_nep_hackathon;
-```
-
-You can verify it exists:
-
-```sql
-\l
-```
-
-Then exit:
-
-```sql
-\q
-```
-
-### Option B: Using pgAdmin
-
-If you installed pgAdmin with PostgreSQL:
-
-1. Open pgAdmin.
-2. Connect to your local PostgreSQL server.
-3. Expand `Servers`.
-4. Expand your local PostgreSQL instance.
-5. Right-click `Databases`.
-6. Click `Create`.
-7. Click `Database...`
-8. Set the database name to `us_nep_hackathon`.
-9. Save it.
-
-## 7. Put the correct PostgreSQL password in `DATABASE_URL`
-
-This is the step that usually causes the most setup issues.
-
-If your PostgreSQL username is `postgres` and your password is `postgres`, then:
-
-```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/us_nep_hackathon
-```
-
-If your PostgreSQL username is `postgres` and your password is something else, replace only the password part:
-
-```env
-DATABASE_URL=postgresql://postgres:YOUR_REAL_PASSWORD@localhost:5432/us_nep_hackathon
-```
-
-Important notes:
-
-- Do not wrap the URL in quotes.
-- If your password contains special characters like `@`, `:`, `/`, or `#`, it may need URL encoding.
-- Example: `@` becomes `%40`
-
-Example:
-
-If your real password is:
-
-```text
-Maharj@n123
-```
-
-Then your `DATABASE_URL` should be:
-
-```env
-DATABASE_URL=postgresql://postgres:Maharj%40n123@localhost:5432/us_nep_hackathon
-```
-
-## 8. Generate the Prisma client
-
-Run:
-
-```powershell
-npm run prisma:generate
-```
-
-This generates the Prisma client based on [schema.prisma](d:/Team-59/backend/prisma/schema.prisma).
-
-## 9. Run the database migration
-
-This project already contains a migration, so apply it to your local database:
-
-```powershell
-npm run prisma:migrate -- --name init
-```
-
-If Prisma says the migration already exists and applies the existing migration, that is fine.
-
-This creates the project tables in PostgreSQL:
-
-- `User`
-- `OnboardingQuestion`
-- `OnboardingResponse`
-- `OnboardingAnswer`
-
-## 10. Seed the onboarding questions
-
-Run:
-
-```powershell
-npm run seed
-```
-
-This reads [onboarding-questions.json](d:/Team-59/backend/src/onboarding/data/onboarding-questions.json) and inserts or updates onboarding questions in the database.
-
-## 11. Start the backend server
-
-For development:
-
-```powershell
-npm run start:dev
-```
-
-For a one-time start:
-
-```powershell
-npm run start
-```
-
-The backend should be available at:
-
-```text
-http://localhost:3001
-```
-
-Because this app uses the `api` prefix, the real route base is:
-
-```text
-http://localhost:3001/api
-```
-
-## 12. Test that the backend is working
-
-Open these routes in Postman, Insomnia, or another API client.
-
-Public routes:
-
-- `POST http://localhost:3001/api/auth/register`
-- `POST http://localhost:3001/api/auth/login`
-- `GET http://localhost:3001/api/onboarding/questions`
-
-Protected routes:
-
-- `GET http://localhost:3001/api/users/me`
-- `GET http://localhost:3001/api/onboarding/responses/me`
-- `POST http://localhost:3001/api/onboarding/responses`
-- `PATCH http://localhost:3001/api/onboarding/responses/me`
-
-Protected routes require a Bearer token from login/register.
-
-## 13. Example auth request
-
-Example register request:
-
-```http
-POST /api/auth/register
-Content-Type: application/json
-
-{
-  "email": "test@example.com",
-  "password": "password123"
-}
-```
-
-If successful, the response includes a JWT access token.
-
-Use that token in protected requests:
-
-```http
-Authorization: Bearer YOUR_ACCESS_TOKEN
-```
-
-## 14. Common setup problems
-
-### Error: `password authentication failed for user "postgres"`
-
-Cause:
-
-- The password in `DATABASE_URL` does not match your PostgreSQL password.
-
-Fix:
-
-- Update `DATABASE_URL` with the correct password.
-- URL-encode special characters if needed.
-
-### Error: `database "us_nep_hackathon" does not exist`
-
-Cause:
-
-- The database was not created yet.
-
-Fix:
-
-- Create it in `psql` or pgAdmin first.
-
-### Error: `P1001: Can't reach database server`
-
-Cause:
-
-- PostgreSQL is not running, or the host/port is wrong.
-
-Fix:
-
-- Make sure PostgreSQL service is running.
-- Make sure your URL uses `localhost:5432` unless your setup is different.
-
-### Error: environment variable missing
-
-Cause:
-
-- One of these values is missing:
-  - `DATABASE_URL`
-  - `JWT_SECRET`
-  - `JWT_EXPIRES_IN`
-  - `FRONTEND_ORIGIN`
-
-Fix:
-
-- Check [`.env`](d:/Team-59/backend/.env) and fill in all required values.
-
-## 15. Recommended first-time setup command order
-
-Run these in order:
-
-```powershell
+# Mindtrail (Team 59) — Full Stack Project
+
+## Description
+Mindtrail is a gamified mental-health web experience built for the Nepal–US Hackathon 2026. The project includes:
+- A **frontend** (Vite + TypeScript) with a pixel-art **2D Canvas game**, NPC dialogues, and a user dashboard.
+- A **backend API** (NestJS + Prisma + PostgreSQL) for auth, game sessions, and progress reports.
+- An **AI service** (FastAPI) used to generate NPC questions and progress-report insights.
+
+## Screenshots / Demo
+![Hub / Dashboard](./frontend/screenshot-hub.png)
+![Gameplay](./frontend/screenshot-gameplay.png)
+![Your Progress](./frontend/screenshot-progress.png)
+
+## Repo Structure
+- `frontend/` — Vite + TypeScript game UI
+- `backend/` — NestJS API (Prisma + PostgreSQL + Swagger)
+- `ai-backend/` — FastAPI service (OpenAI-based generation)
+- `docs/backend-setup.md` — Original detailed backend setup notes
+
+## Setup and Installation Instructions
+
+### Prerequisites
+- Node.js (20+ recommended) + npm
+- PostgreSQL (14+)
+- Python (3.12+ for `ai-backend/`)
+
+Optional:
+- Redis (used by the backend for prefetch/locking; see `backend/.env.example`)
+
+---
+
+### 1) Backend (NestJS API)
+```bash
 cd backend
 npm install
-Copy-Item .env.example .env
+cp .env.example .env
 ```
 
-Then edit [`.env`](d:/Team-59/backend/.env) and set the correct PostgreSQL password.
+Edit `backend/.env` (at minimum: `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN`, `AI_BACKEND_URL`).
 
-After that:
-
-```powershell
+Create DB + run migrations + seed:
+```bash
+cd backend
 npm run prisma:generate
 npm run prisma:migrate -- --name init
 npm run seed
+```
+
+Start backend:
+```bash
+cd backend
 npm run start:dev
 ```
 
-## 16. Files that matter during setup
+Backend URLs:
+- API: `http://localhost:3001/api`
+- Swagger UI: `http://localhost:3001/api/docs`
+- Swagger JSON: `http://localhost:3001/api/docs-json`
 
-- [`.env.example`](d:/Team-59/backend/.env.example): sample environment values
-- [`.env`](d:/Team-59/backend/.env): your real local environment values
-- [`package.json`](d:/Team-59/backend/package.json): project scripts
-- [`schema.prisma`](d:/Team-59/backend/prisma/schema.prisma): database schema
-- [`seed.ts`](d:/Team-59/backend/prisma/seed.ts): onboarding question seed script
+---
 
-## 17. Useful commands reference
+### 2) AI Backend (FastAPI)
+```bash
+cd ai-backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+```
 
-```powershell
+Set your API key in `ai-backend/.env`:
+```env
+OPENAI_API_KEY=...
+```
+
+Run the service:
+```bash
+cd ai-backend
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+AI URLs (default):
+- Health: `http://localhost:8000/health`
+- Docs: `http://localhost:8000/docs`
+
+Make sure `backend/.env` points `AI_BACKEND_URL` to this service, e.g.:
+```env
+AI_BACKEND_URL=http://localhost:8000
+```
+
+---
+
+### 3) Frontend (Vite + TypeScript)
+```bash
+cd frontend
 npm install
-npm run prisma:generate
-npm run prisma:migrate -- --name init
-npm run seed
-npm run start:dev
+```
+
+Configure dev proxy in `frontend/.env` (example):
+```env
+VITE_API_PROXY_TARGET=http://localhost:3001
+VITE_API_PROXY_TIMEOUT_MS=300000
+```
+
+Run dev server:
+```bash
+cd frontend
+npm run dev
+```
+
+Build:
+```bash
+cd frontend
 npm run build
 ```
+
+## Usage
+1. Start the backend + AI backend.
+2. Start the frontend.
+3. Register / log in.
+4. From the hub/dashboard:
+   - Choose an avatar.
+   - Enter the world and talk to NPCs.
+   - Select answers (submitted to the backend).
+5. When the game ends, the session is ended and a **progress report** is generated; open **YOUR PROGRESS** to view it.
+
+## Technologies Used
+**Frontend**
+- TypeScript, Vite
+- HTML Canvas (2D)
+- Vanilla CSS
+
+**Backend**
+- NestJS (TypeScript)
+- Prisma + PostgreSQL
+- Swagger (OpenAPI)
+- Redis (optional)
+
+**AI Service**
+- FastAPI + Uvicorn
+- OpenAI SDK
+
+## Team Members
+- Bitisha Maharjan 
+- Riya Maharjan 
+- Swopnil Maharjan 
+- Bijen Shrestha
+- Suyan Shrestha 
+
+## Contact / Notes
+- Frontend proxy setup: `frontend/vite.config.ts` + `frontend/.env`
+- Backend environment reference: `backend/.env.example`
+- If you’re demoing without external network access, make sure the AI backend is running locally and `AI_BACKEND_URL` points to it.
