@@ -787,8 +787,8 @@ body {
 .hub-avatar-name {
   margin-top: 4px;
   font-family: "Press Start 2P", monospace;
-  font-size: 9px;
-  color: rgba(0, 0, 0, 0.6);
+  font-size: 14px;
+  color: black;
 }
 
 .hub-top-right {
