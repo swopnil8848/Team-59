@@ -225,9 +225,11 @@ Return JSON only with fields: analysis, feedback.
             "http://100.54.109.124/api/progress-reports/complete",
             json=result,
             timeout=60,)
-        print('status',nestResponse.status)
+        print("payload", result)
+        print('status',nestResponse.status_code)
         print('message',nestResponse.text)
-    except requests.RequestException:
-        pass
+        nestResponse.raise_for_status()
+    except requests.RequestException as e:
+        print("Request failed:", e)
 
     return result
