@@ -528,12 +528,53 @@ export class Ui {
     ctx.drawImage(npc.sprites[0], panelX + 24, panelY + 18, 82, 108);
     ctx.restore();
 
+    const nameText = npc.dialogue.name ?? "";
+    const bannerX = panelX + 18;
+    const bannerY = panelY - 18;
+    const bannerH = 32;
+    const bannerPaddingX = 14;
+    const bannerMinW = 164;
+    const bannerMaxW = Math.max(bannerMinW, panelWidth - 36);
+
+    let fontSize = 18;
+    const maxTextWidth = bannerMaxW - bannerPaddingX * 2;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+
+    const measureWithSize = (size: number) => {
+      ctx.font = `bold ${size}px Outfit`;
+      return ctx.measureText(nameText).width;
+    };
+
+    while (fontSize > 11 && measureWithSize(fontSize) > maxTextWidth) {
+      fontSize -= 1;
+    }
+
+    // If it's still too long, truncate with ellipsis.
+    ctx.font = `bold ${fontSize}px Outfit`;
+    let displayName = nameText;
+    if (ctx.measureText(displayName).width > maxTextWidth) {
+      const ellipsis = "…";
+      const available = Math.max(0, maxTextWidth - ctx.measureText(ellipsis).width);
+      let lo = 0;
+      let hi = displayName.length;
+      while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        const slice = displayName.slice(0, mid);
+        if (ctx.measureText(slice).width <= available) lo = mid;
+        else hi = mid - 1;
+      }
+      displayName = `${displayName.slice(0, lo)}${ellipsis}`;
+    }
+
+    const measured = ctx.measureText(displayName).width;
+    const bannerW = Math.min(bannerMaxW, Math.max(bannerMinW, measured + bannerPaddingX * 2));
+
     ctx.fillStyle = "#8bd3ff";
-    ctx.fillRect(panelX + 18, panelY - 18, 164, 32);
+    ctx.fillRect(bannerX, bannerY, bannerW, bannerH);
     ctx.fillStyle = "#09131a";
-    ctx.font = "bold 18px Outfit";
-    ctx.textAlign = "center";
-    ctx.fillText(npc.dialogue.name, panelX + 100, panelY + 4);
+    ctx.fillText(displayName, bannerX + bannerPaddingX, bannerY + bannerH / 2);
+    ctx.textBaseline = "alphabetic";
 
     ctx.fillStyle = "white";
     ctx.textAlign = "left";

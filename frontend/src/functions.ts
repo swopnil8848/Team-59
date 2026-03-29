@@ -130,9 +130,20 @@ function createRandomHiddenCharacters(centerX: number, centerY: number, question
     { x: -700, y: -540 },
   ];
 
+  const npcNamePool = [
+    "Mentor Anushka Shrestha",
+    "Shreyas K. Shrestha",
+    "Samartha Shrestha",
+    "Nasana Bajracharya",
+    "Suvasha Shrestha",
+    "Christina Kayastha",
+    "Binam Kayastha",
+    "Sanjay Manandhar",
+  ];
+
   const dialoguePool: NpcDialogue[] = [
     {
-      name: "Aama Maya",
+      name: npcNamePool[0] ?? "Mentor Anushka Shrestha",
       scenario: "I am feeling confused. I thought my daughter was supposed to come this morning. What should I do now?",
       options: [
         "Sit with me and gently remind me what day it is.",
@@ -141,7 +152,7 @@ function createRandomHiddenCharacters(centerX: number, centerY: number, question
       ],
     },
     {
-      name: "Baa Hari",
+      name: npcNamePool[1] ?? "Shreyas K. Shrestha",
       scenario: "I cannot remember where I kept my shawl, and it is making me anxious.",
       options: [
         "Help me look slowly and reassure me.",
@@ -150,7 +161,7 @@ function createRandomHiddenCharacters(centerX: number, centerY: number, question
       ],
     },
     {
-      name: "Uncle Raman",
+      name: npcNamePool[2] ?? "Samartha Shrestha",
       scenario: "I think I need to go home, even though I am already here. Can you help me?",
       options: [
         "Speak calmly and help me feel safe in the present moment.",
@@ -159,7 +170,7 @@ function createRandomHiddenCharacters(centerX: number, centerY: number, question
       ],
     },
     {
-      name: "Auntie Sita",
+      name: npcNamePool[3] ?? "Nasana Bajracharya",
       scenario: "Too many things are happening around me. I feel overwhelmed.",
       options: [
         "Reduce the noise and talk to me softly.",
@@ -188,7 +199,7 @@ function createRandomHiddenCharacters(centerX: number, centerY: number, question
       );
 
       return {
-        name: dialoguePool[idx % dialoguePool.length]?.name ?? `Wanderer ${idx + 1}`,
+        name: npcNamePool[idx % npcNamePool.length] ?? `Wanderer ${idx + 1}`,
         scenario: qText,
         options: options.length > 0 ? options : (dialoguePool[idx % dialoguePool.length]?.options ?? []),
         questionId: typeof q.id === "string" ? q.id : undefined,
