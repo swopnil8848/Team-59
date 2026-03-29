@@ -107,6 +107,7 @@ export const stateVariables = {
   currentSessionId: null as string | null,
   gameQuestions: [] as any[],
   sessionPrefetchPromise: null as Promise<any> | null,
+  dialogueScrollY: 0,
   playerProfile: {
     name: "",
     age: "",

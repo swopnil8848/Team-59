@@ -148,6 +148,19 @@ canvas.addEventListener("pointerup", (e) => {
   stateVariables.mouseClickX = stateVariables.mouseX;
   stateVariables.mouseClickY = stateVariables.mouseY;
 });
+canvas.addEventListener("wheel", (e) => {
+  if (stateVariables.dialoguePanelRect.visible) {
+    const isOverPanel =
+      stateVariables.mouseX >= stateVariables.dialoguePanelRect.x &&
+      stateVariables.mouseX <= stateVariables.dialoguePanelRect.x + stateVariables.dialoguePanelRect.width &&
+      stateVariables.mouseY >= stateVariables.dialoguePanelRect.y &&
+      stateVariables.mouseY <= stateVariables.dialoguePanelRect.y + stateVariables.dialoguePanelRect.height;
+    if (isOverPanel) {
+      stateVariables.dialogueScrollY += e.deltaY * 0.5;
+      e.preventDefault();
+    }
+  }
+}, { passive: false });
 
 let avatarIndex = 0;
 stateVariables.selectedAvatarId = avatars[avatarIndex]?.id ?? "Ophelia";
