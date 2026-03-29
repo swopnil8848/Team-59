@@ -14,6 +14,13 @@ window.addEventListener(
   },
   true
 );
+window.addEventListener(
+  "blur",
+  function () {
+    stateVariables.keyState = {};
+  },
+  true
+);
 
 export function handleMovementControls() {
   if (stateVariables.isHoldingMeditationKey) {

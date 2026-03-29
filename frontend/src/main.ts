@@ -1201,6 +1201,7 @@ function resetGameState() {
   stateVariables.isHoldingMeditationKey = false;
   stateVariables.meditationStart = null;
   stateVariables.meditationZoomLevel = 1;
+  stateVariables.keyState = {};
 
   stateVariables.currentSessionId = null;
   stateVariables.gameQuestions = [];

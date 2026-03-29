@@ -224,6 +224,7 @@ function loadPlayerSprites(): DirectionalSprites {
 // `questions` is optional for compatibility with the API-driven session flow.
 export function initializeGame(_questions?: any[]) {
   adjustCanvasSize();
+  stateVariables.keyState = {};
 
   stateVariables.bgImage = new Maps("main-map.jpg");
   stateVariables.bgImage.initialiseImages();
@@ -274,7 +275,7 @@ export function drawChannelledAnimation() {
     return;
   }
 
-  const holdDuration = stateVariables.lightDurationMs;
+  const holdDuration = stateVariables.meditationDurationMs;
   const text = "Meditating";
   const currentTime = Date.now();
   const elapsedTime = currentTime - stateVariables.meditationStart;

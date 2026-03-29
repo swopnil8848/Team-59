@@ -127,7 +127,7 @@ export class Lantern {
 
   showLuminosity() {
     const now = Date.now();
-    const holdDuration = stateVariables.lightDurationMs;
+    const holdDuration = stateVariables.meditationDurationMs;
     const minInner = this.minRadiusInnerCircle;
     const maxInner = Math.max(this.minRadiusInnerCircle, this.maxRadiusInnerCircleTarget);
     const minOuter = this.minRadiusOuterCircle;
